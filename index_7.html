@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Portal de Clientes - Dr. Diego Mayorga</title>
+<link rel="icon" href="logo.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    background: linear-gradient(180deg, #0B1730 0%, #050B18 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px 16px;
+    color: #222;
+  }
+  .contenedor {
+    width: 100%;
+    max-width: 460px;
+    background: #FFFFFF;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    overflow: hidden;
+  }
+  .contenedor.ancho { max-width: 700px; }
+  .encabezado {
+    background: linear-gradient(180deg, #0F1E3D 0%, #08132A 100%);
+    padding: 28px 20px 20px;
+    text-align: center;
+  }
+  .encabezado img { width: 100px; height: 100px; border-radius: 50%; }
+  .encabezado h1 { color: #F6DE96; font-size: 20px; margin-top: 10px; letter-spacing: 1px; }
+  .encabezado p { color: #C7A85A; font-size: 13px; margin-top: 4px; }
+  .cuerpo { padding: 24px 20px; }
+  h2 { font-size: 17px; color: #0F1E3D; margin-bottom: 14px; }
+  h3 { font-size: 14px; color: #0F1E3D; font-family: Arial, sans-serif; }
+  label { display: block; font-size: 13px; font-weight: bold; color: #444; margin-top: 12px; margin-bottom: 4px; font-family: Arial, sans-serif; }
+  input[type=text], input[type=email], input[type=password], input[type=tel], input[type=date], textarea, select {
+    width: 100%;
+    padding: 11px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: Arial, sans-serif;
+  }
+  textarea { min-height: 90px; resize: vertical; }
+  button {
+    margin-top: 18px;
+    width: 100%;
+    background: #0F1E3D;
+    color: #F6DE96;
+    border: none;
+    padding: 13px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: bold;
+    font-family: Arial, sans-serif;
+    cursor: pointer;
+  }
+  button:hover { background: #182C56; }
+  button.chica { margin-top: 8px; padding: 9px; font-size: 13px; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .enlace-cambio { text-align: center; margin-top: 14px; font-size: 13px; font-family: Arial, sans-serif; color: #555; cursor: pointer; text-decoration: underline; }
+  .aviso { margin-top: 12px; padding: 10px; border-radius: 8px; font-size: 13px; font-family: Arial, sans-serif; }
+  .aviso.ok { background: #e3f6e6; color: #1e7a34; }
+  .aviso.error { background: #fdeaea; color: #b32424; }
+  .oculto { display: none; }
+  .dato-cliente { background: #F5F0E1; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-family: Arial, sans-serif; font-size: 14px; }
+  .caja { border: 1px solid #e5e5e5; border-radius: 10px; padding: 16px; margin-top: 16px; }
+  .lista-item { font-size: 13px; font-family: Arial, sans-serif; padding: 8px 0; border-bottom: 1px solid #eee; }
+  .lista-item small { color: #888; display: block; margin-top: 2px; }
+  .lista-item.mensajeAbogado { background: #F5F0E1; padding: 8px; border-radius: 6px; border-bottom: none; margin-bottom: 6px; }
+  .salir { text-align: center; margin-top: 20px; font-size: 12px; color: #888; font-family: Arial, sans-serif; cursor: pointer; text-decoration: underline; }
+  .carga-inicial { text-align: center; padding: 60px 20px; color: #F6DE96; font-family: Arial, sans-serif; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; font-family: Arial, sans-serif; }
+  .tab { flex: 1; text-align: center; padding: 10px; border-radius: 8px; background: #F0F0F0; font-size: 13px; font-weight: bold; color: #666; cursor: pointer; }
+  .tab.activo { background: #0F1E3D; color: #F6DE96; }
+  .fila-cliente { cursor: pointer; }
+  .fila-cliente h3 { margin-bottom: 4px; }
+  .fila-cliente p { font-family: Arial, sans-serif; font-size: 12px; color: #666; }
+  .calendario { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; font-family: Arial, sans-serif; font-size: 12px; margin-top: 10px; }
+  .diaCal { text-align: center; padding: 8px 2px; border-radius: 6px; background: #F7F7F7; min-height: 34px; position: relative; }
+  .diaCal.hoy { background: #0F1E3D; color: #F6DE96; font-weight: bold; }
+  .diaCal.conEvento::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #D85A30; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); }
+  .diaCal.hoy.conEvento::after { background: #F6DE96; }
+  .diaSemana { text-align: center; font-size: 11px; color: #999; font-family: Arial, sans-serif; padding-bottom: 4px; }
+  .alertaHoy { background: #FDEAEA; color: #b32424; padding: 10px; border-radius: 8px; font-family: Arial, sans-serif; font-size: 13px; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+<div class="contenedor" id="contenedorPrincipal">
+
+  <div class="encabezado">
+    <img src="logo.png" alt="Logo Dr. Diego Mayorga">
+    <h1>Dr. Diego Mayorga</h1>
+    <p>Portal de Clientes · Tel 11 6469-4368</p>
+  </div>
+
+  <div class="cuerpo" id="cuerpo">
+    <div class="carga-inicial" style="color:#0F1E3D;">Cargando...</div>
+  </div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  signOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, collection, addDoc, query, orderBy, getDocs, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
+import {
+  getStorage, ref, uploadBytes, getDownloadURL
+} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-storage.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD6NK0CNaP_n8ncmSFp2A-MiQOVzt08RKM",
+  authDomain: "pagina-del-estudio-fc0cd.firebaseapp.com",
+  projectId: "pagina-del-estudio-fc0cd",
+  storageBucket: "pagina-del-estudio-fc0cd.firebasestorage.app",
+  messagingSenderId: "909709319888",
+  appId: "1:909709319888:web:083761641857378dcfc8d5",
+  measurementId: "G-YG7KQHSN0Q"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+const cuerpo = document.getElementById('cuerpo');
+const contenedorPrincipal = document.getElementById('contenedorPrincipal');
+const ADMIN_EMAIL = 'diegoarimayo1979@gmail.com';
+
+// ---------- PANTALLA: LOGIN / REGISTRO ----------
+function pantallaLogin(modoRegistro = false) {
+  contenedorPrincipal.classList.remove('ancho');
+  cuerpo.innerHTML = `
+    <h2>${modoRegistro ? 'Crear tu cuenta' : 'Iniciar sesión'}</h2>
+    <label>Email</label>
+    <input type="email" id="inEmail" placeholder="tu@email.com">
+    <label>Contraseña</label>
+    <input type="password" id="inPass" placeholder="Mínimo 6 caracteres">
+    <button id="btnAccion">${modoRegistro ? 'Crear cuenta' : 'Ingresar'}</button>
+    <div class="enlace-cambio" id="btnCambiar">
+      ${modoRegistro ? '¿Ya tenés cuenta? Iniciar sesión' : '¿Primera vez? Crear una cuenta'}
+    </div>
+    <div id="avisoLogin"></div>
+  `;
+
+  document.getElementById('btnCambiar').onclick = () => pantallaLogin(!modoRegistro);
+
+  document.getElementById('btnAccion').onclick = async () => {
+    const email = document.getElementById('inEmail').value.trim();
+    const pass = document.getElementById('inPass').value;
+    const aviso = document.getElementById('avisoLogin');
+    if (!email || !pass) {
+      aviso.innerHTML = '<div class="aviso error">Completá email y contraseña.</div>';
+      return;
+    }
+    aviso.innerHTML = '<div class="aviso ok">Procesando...</div>';
+    try {
+      if (modoRegistro) {
+        await createUserWithEmailAndPassword(auth, email, pass);
+      } else {
+        await signInWithEmailAndPassword(auth, email, pass);
+      }
+    } catch (err) {
+      aviso.innerHTML = '<div class="aviso error">' + traducirError(err.code) + '</div>';
+    }
+  };
+}
+
+function traducirError(code) {
+  const mapa = {
+    'auth/email-already-in-use': 'Ese email ya tiene una cuenta creada. Probá iniciar sesión.',
+    'auth/invalid-email': 'El email no es válido.',
+    'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.',
+    'auth/invalid-credential': 'Email o contraseña incorrectos.',
+    'auth/wrong-password': 'Contraseña incorrecta.',
+    'auth/user-not-found': 'No existe una cuenta con ese email.'
+  };
+  return mapa[code] || 'Ocurrió un error. Intentá de nuevo.';
+}
+
+// ---------- PANTALLA: FORMULARIO DE REGISTRO DE DATOS (cliente) ----------
+function pantallaFormulario(user) {
+  contenedorPrincipal.classList.remove('ancho');
+  cuerpo.innerHTML = `
+    <h2>Completá tus datos</h2>
+    <label>Nombre completo</label>
+    <input type="text" id="fNombre">
+    <label>DNI</label>
+    <input type="text" id="fDni">
+    <label>Teléfono</label>
+    <input type="tel" id="fTelefono">
+    <label>Dirección</label>
+    <input type="text" id="fDireccion">
+    <button id="btnGuardar">Guardar y continuar</button>
+    <div id="avisoForm"></div>
+    <div class="salir" id="btnSalir">Cerrar sesión</div>
+  `;
+
+  document.getElementById('btnSalir').onclick = () => signOut(auth);
+
+  document.getElementById('btnGuardar').onclick = async () => {
+    const nombre = document.getElementById('fNombre').value.trim();
+    const dni = document.getElementById('fDni').value.trim();
+    const telefono = document.getElementById('fTelefono').value.trim();
+    const direccion = document.getElementById('fDireccion').value.trim();
+    const aviso = document.getElementById('avisoForm');
+
+    if (!nombre || !dni) {
+      aviso.innerHTML = '<div class="aviso error">Nombre y DNI son obligatorios.</div>';
+      return;
+    }
+    aviso.innerHTML = '<div class="aviso ok">Guardando...</div>';
+    try {
+      await setDoc(doc(db, 'clientes', user.uid), {
+        nombre, dni, telefono, direccion,
+        email: user.email,
+        fechaRegistro: serverTimestamp()
+      });
+      pantallaDashboard(user, { nombre, dni, telefono, direccion });
+    } catch (err) {
+      aviso.innerHTML = '<div class="aviso error">Error al guardar: ' + err.message + '</div>';
+    }
+  };
+}
+
+// ---------- PANTALLA: DASHBOARD DE CLIENTE ----------
+async function pantallaDashboard(user, datos) {
+  contenedorPrincipal.classList.remove('ancho');
+  cuerpo.innerHTML = `
+    <div class="dato-cliente">
+      <strong>${datos.nombre}</strong><br>
+      DNI: ${datos.dni} · Tel: ${datos.telefono || '-'}<br>
+      ${user.email}
+    </div>
+
+    <div class="caja">
+      <h3>Mensajes del estudio</h3>
+      <div id="mensajesAbogado" style="margin-top:8px;">Cargando...</div>
+    </div>
+
+    <div class="caja">
+      <h3>Escribir una novedad o consulta</h3>
+      <textarea id="txtNovedad" placeholder="Contame qué necesitás..."></textarea>
+      <button id="btnNovedad">Enviar</button>
+      <div id="avisoNovedad"></div>
+    </div>
+
+    <div class="caja">
+      <h3>Subir un documento</h3>
+      <input type="file" id="archivoInput">
+      <button id="btnArchivo">Subir archivo</button>
+      <div id="avisoArchivo"></div>
+    </div>
+
+    <div class="caja">
+      <h3>Historial</h3>
+      <div id="listaHistorial">Cargando...</div>
+    </div>
+
+    <div class="salir" id="btnSalir">Cerrar sesión</div>
+  `;
+
+  document.getElementById('btnSalir').onclick = () => signOut(auth);
+
+  document.getElementById('btnNovedad').onclick = async () => {
+    const texto = document.getElementById('txtNovedad').value.trim();
+    const aviso = document.getElementById('avisoNovedad');
+    if (!texto) { aviso.innerHTML = '<div class="aviso error">Escribí algo primero.</div>'; return; }
+    aviso.innerHTML = '<div class="aviso ok">Enviando...</div>';
+    try {
+      await addDoc(collection(db, 'clientes', user.uid, 'novedades'), {
+        texto, fecha: serverTimestamp()
+      });
+      document.getElementById('txtNovedad').value = '';
+      aviso.innerHTML = '<div class="aviso ok">Enviado correctamente.</div>';
+      cargarHistorial(user.uid);
+    } catch (err) {
+      aviso.innerHTML = '<div class="aviso error">Error: ' + err.message + '</div>';
+    }
+  };
+
+  document.getElementById('btnArchivo').onclick = async () => {
+    const input = document.getElementById('archivoInput');
+    const aviso = document.getElementById('avisoArchivo');
+    if (!input.files.length) { aviso.innerHTML = '<div class="aviso error">Elegí un archivo primero.</div>'; return; }
+    const archivo = input.files[0];
+    aviso.innerHTML = '<div class="aviso ok">Subiendo...</div>';
+    try {
+      const refArchivo = ref(storage, 'clientes/' + user.uid + '/' + Date.now() + '_' + archivo.name);
+      await uploadBytes(refArchivo, archivo);
+      const url = await getDownloadURL(refArchivo);
+      await addDoc(collection(db, 'clientes', user.uid, 'archivos'), {
+        nombre: archivo.name, url, fecha: serverTimestamp()
+      });
+      input.value = '';
+      aviso.innerHTML = '<div class="aviso ok">Archivo subido correctamente.</div>';
+      cargarHistorial(user.uid);
+    } catch (err) {
+      aviso.innerHTML = '<div class="aviso error">Error: ' + err.message + '</div>';
+    }
+  };
+
+  cargarHistorial(user.uid);
+  cargarMensajesAbogado(user.uid);
+}
+
+async function cargarMensajesAbogado(uid) {
+  const cont = document.getElementById('mensajesAbogado');
+  if (!cont) return;
+  try {
+    const snap = await getDocs(query(collection(db, 'clientes', uid, 'mensajes'), orderBy('fecha', 'desc')));
+    if (snap.empty) {
+      cont.innerHTML = '<p style="font-size:13px;color:#888;font-family:Arial;">Todavía no hay mensajes.</p>';
+      return;
+    }
+    let html = '';
+    snap.forEach(d => {
+      const m = d.data();
+      const fecha = m.fecha ? new Date(m.fecha.seconds * 1000).toLocaleString('es-AR') : '';
+      html += `<div class="lista-item mensajeAbogado">💬 ${m.texto}<small>${fecha}</small></div>`;
+    });
+    cont.innerHTML = html;
+  } catch (err) {
+    cont.innerHTML = '<p style="font-size:13px;color:#b32424;font-family:Arial;">Error: ' + err.message + '</p>';
+  }
+}
+
+async function cargarHistorial(uid) {
+  const cont = document.getElementById('listaHistorial');
+  if (!cont) return;
+  try {
+    const [novSnap, arcSnap] = await Promise.all([
+      getDocs(query(collection(db, 'clientes', uid, 'novedades'), orderBy('fecha', 'desc'))),
+      getDocs(query(collection(db, 'clientes', uid, 'archivos'), orderBy('fecha', 'desc')))
+    ]);
+    let items = [];
+    novSnap.forEach(d => items.push({ tipo: 'Nota', ...d.data() }));
+    arcSnap.forEach(d => items.push({ tipo: 'Archivo', ...d.data() }));
+    items.sort((a, b) => (b.fecha?.seconds || 0) - (a.fecha?.seconds || 0));
+
+    if (items.length === 0) {
+      cont.innerHTML = '<p style="font-size:13px;color:#888;font-family:Arial;">Todavía no hay novedades.</p>';
+      return;
+    }
+    cont.innerHTML = items.map(it => {
+      const fecha = it.fecha ? new Date(it.fecha.seconds * 1000).toLocaleString('es-AR') : '';
+      if (it.tipo === 'Archivo') {
+        return `<div class="lista-item">📎 <a href="${it.url}" target="_blank">${it.nombre}</a><small>${fecha}</small></div>`;
+      }
+      return `<div class="lista-item">💬 ${it.texto}<small>${fecha}</small></div>`;
+    }).join('');
+  } catch (err) {
+    cont.innerHTML = '<p style="font-size:13px;color:#b32424;font-family:Arial;">Error al cargar: ' + err.message + '</p>';
+  }
+}
+
+// ---------- PANTALLA: ADMINISTRADOR ----------
+let cacheClientes = [];
+
+async function pantallaAdmin(user, tabInicial = 'clientes') {
+  contenedorPrincipal.classList.add('ancho');
+  cuerpo.innerHTML = `
+    <h2>Panel de Administrador</h2>
+    <p style="font-family:Arial;font-size:13px;color:#888;margin-bottom:10px;">Conectado como ${user.email}</p>
+    <div id="alertaHoyBox"></div>
+    <div class="tabs">
+      <div class="tab" id="tabClientes">Clientes</div>
+      <div class="tab" id="tabAgenda">Agenda</div>
+    </div>
+    <div id="contenidoTab"></div>
+    <div class="salir" id="btnSalir">Cerrar sesión</div>
+  `;
+  document.getElementById('btnSalir').onclick = () => signOut(auth);
+  document.getElementById('tabClientes').onclick = () => mostrarTabAdmin('clientes', user);
+  document.getElementById('tabAgenda').onclick = () => mostrarTabAdmin('agenda', user);
+
+  await revisarAlertasHoy();
+  mostrarTabAdmin(tabInicial, user);
+}
+
+function marcarTabActiva(tab) {
+  document.getElementById('tabClientes').classList.toggle('activo', tab === 'clientes');
+  document.getElementById('tabAgenda').classList.toggle('activo', tab === 'agenda');
+}
+
+async function mostrarTabAdmin(tab, user) {
+  marcarTabActiva(tab);
+  if (tab === 'clientes') {
+    await renderTabClientes(user);
+  } else {
+    await renderTabAgenda(user);
+  }
+}
+
+async function renderTabClientes(user) {
+  const cont = document.getElementById('contenidoTab');
+  cont.innerHTML = 'Cargando clientes...';
+  try {
+    const snap = await getDocs(collection(db, 'clientes'));
+    cacheClientes = [];
+    snap.forEach(d => cacheClientes.push({ uid: d.id, ...d.data() }));
+
+    if (cacheClientes.length === 0) {
+      cont.innerHTML = '<p style="font-family:Arial;font-size:13px;color:#888;">Todavía no hay clientes registrados.</p>';
+      return;
+    }
+
+    cont.innerHTML = cacheClientes.map(c => `
+      <div class="caja fila-cliente" data-uid="${c.uid}">
+        <h3>${c.nombre || '(sin nombre)'}</h3>
+        <p>DNI: ${c.dni || '-'} · Tel: ${c.telefono || '-'}<br>${c.email || ''}</p>
+        <div class="detalleCliente oculto" style="margin-top:10px;"></div>
+      </div>
+    `).join('');
+
+    cont.querySelectorAll('.fila-cliente').forEach(el => {
+      el.addEventListener('click', async (e) => {
+        if (e.target.closest('.detalleCliente')) return;
+        const detalle = el.querySelector('.detalleCliente');
+        const yaAbierto = !detalle.classList.contains('oculto');
+        cont.querySelectorAll('.detalleCliente').forEach(d => d.classList.add('oculto'));
+        if (yaAbierto) return;
+        detalle.classList.remove('oculto');
+        detalle.innerHTML = 'Cargando...';
+        await renderDetalleCliente(el.dataset.uid, detalle);
+      });
+    });
+  } catch (err) {
+    cont.innerHTML = '<div class="aviso error">Error al cargar clientes: ' + err.message + '</div>';
+  }
+}
+
+async function renderDetalleCliente(uid, contenedor) {
+  try {
+    const [novSnap, arcSnap, msgSnap] = await Promise.all([
+      getDocs(query(collection(db, 'clientes', uid, 'novedades'), orderBy('fecha', 'desc'))),
+      getDocs(query(collection(db, 'clientes', uid, 'archivos'), orderBy('fecha', 'desc'))),
+      getDocs(query(collection(db, 'clientes', uid, 'mensajes'), orderBy('fecha', 'desc')))
+    ]);
+    let items = [];
+    novSnap.forEach(d => items.push({ tipo: 'Nota', ...d.data() }));
+    arcSnap.forEach(d => items.push({ tipo: 'Archivo', ...d.data() }));
+    items.sort((a, b) => (b.fecha?.seconds || 0) - (a.fecha?.seconds || 0));
+
+    let htmlItems = items.length === 0
+      ? '<p style="font-size:13px;color:#888;font-family:Arial;">Sin novedades todavía.</p>'
+      : items.map(it => {
+          const fecha = it.fecha ? new Date(it.fecha.seconds * 1000).toLocaleString('es-AR') : '';
+          if (it.tipo === 'Archivo') {
+            return `<div class="lista-item">📎 <a href="${it.url}" target="_blank">${it.nombre}</a><small>${fecha}</small></div>`;
+          }
+          return `<div class="lista-item">💬 ${it.texto}<small>${fecha}</small></div>`;
+        }).join('');
+
+    let htmlMsgs = '';
+    msgSnap.forEach(d => {
+      const m = d.data();
+      const fecha = m.fecha ? new Date(m.fecha.seconds * 1000).toLocaleString('es-AR') : '';
+      htmlMsgs += `<div class="lista-item mensajeAbogado">💬 ${m.texto}<small>${fecha}</small></div>`;
+    });
+
+    contenedor.innerHTML = `
+      <h3 style="margin-bottom:6px;">Historial</h3>
+      ${htmlItems}
+      <h3 style="margin-top:14px;margin-bottom:6px;">Mensajes que le enviaste</h3>
+      <div>${htmlMsgs || '<p style="font-size:13px;color:#888;font-family:Arial;">Todavía no le enviaste mensajes.</p>'}</div>
+      <label style="margin-top:12px;">Enviar un mensaje a este cliente</label>
+      <textarea class="txtMsgAdmin"></textarea>
+      <button class="chica btnEnviarMsgAdmin" data-uid="${uid}">Enviar mensaje</button>
+      <div class="avisoMsgAdmin"></div>
+    `;
+
+    contenedor.querySelector('.btnEnviarMsgAdmin').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const btn = e.target;
+      const texto = contenedor.querySelector('.txtMsgAdmin').value.trim();
+      const aviso = contenedor.querySelector('.avisoMsgAdmin');
+      if (!texto) { aviso.innerHTML = '<div class="aviso error">Escribí un mensaje primero.</div>'; return; }
+      aviso.innerHTML = '<div class="aviso ok">Enviando...</div>';
+      try {
+        await addDoc(collection(db, 'clientes', btn.dataset.uid, 'mensajes'), {
+          texto, fecha: serverTimestamp()
+        });
+        aviso.innerHTML = '<div class="aviso ok">Mensaje enviado.</div>';
+        contenedor.querySelector('.txtMsgAdmin').value = '';
+        renderDetalleCliente(uid, contenedor);
+      } catch (err) {
+        aviso.innerHTML = '<div class="aviso error">Error: ' + err.message + '</div>';
+      }
+    });
+  } catch (err) {
+    contenedor.innerHTML = '<p style="font-size:13px;color:#b32424;font-family:Arial;">Error: ' + err.message + '</p>';
+  }
+}
+
+// ---------- AGENDA ----------
+let mesActual = new Date();
+
+async function renderTabAgenda(user) {
+  const cont = document.getElementById('contenidoTab');
+  cont.innerHTML = `
+    <div class="caja">
+      <h3>Agregar evento</h3>
+      <label>Fecha</label>
+      <input type="date" id="agFecha">
+      <label>Título</label>
+      <input type="text" id="agTitulo" placeholder="Ej: Audiencia, vencimiento, reunión...">
+      <label>Cliente relacionado (opcional)</label>
+      <select id="agCliente">
+        <option value="">Sin cliente asociado</option>
+        ${cacheClientes.map(c => `<option value="${c.uid}">${c.nombre}</option>`).join('')}
+      </select>
+      <label>Nota</label>
+      <textarea id="agNota" placeholder="Detalles adicionales..."></textarea>
+      <button id="btnAgregarEvento">Guardar evento</button>
+      <div id="avisoAgenda"></div>
+    </div>
+
+    <div class="caja">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-family:Arial;">
+        <button class="chica" id="mesAnterior" style="width:auto;margin:0;padding:6px 12px;">←</button>
+        <h3 id="tituloMes"></h3>
+        <button class="chica" id="mesSiguiente" style="width:auto;margin:0;padding:6px 12px;">→</button>
+      </div>
+      <div class="calendario" id="calendarioGrid"></div>
+    </div>
+
+    <div class="caja">
+      <h3>Próximos eventos</h3>
+      <div id="listaEventos" style="margin-top:8px;">Cargando...</div>
+    </div>
+  `;
+
+  document.getElementById('btnAgregarEvento').onclick = async () => {
+    const fecha = document.getElementById('agFecha').value;
+    const titulo = document.getElementById('agTitulo').value.trim();
+    const clienteUid = document.getElementById('agCliente').value;
+    const nota = document.getElementById('agNota').value.trim();
+    const aviso = document.getElementById('avisoAgenda');
+    if (!fecha || !titulo) { aviso.innerHTML = '<div class="aviso error">Completá fecha y título.</div>'; return; }
+    aviso.innerHTML = '<div class="aviso ok">Guardando...</div>';
+    try {
+      const clienteNombre = clienteUid ? (cacheClientes.find(c => c.uid === clienteUid)?.nombre || '') : '';
+      await addDoc(collection(db, 'agenda'), {
+        fecha, titulo, nota, clienteUid, clienteNombre,
+        fechaCreacion: serverTimestamp()
+      });
+      aviso.innerHTML = '<div class="aviso ok">Evento guardado.</div>';
+      document.getElementById('agTitulo').value = '';
+      document.getElementById('agNota').value = '';
+      cargarCalendario();
+      cargarListaEventos();
+    } catch (err) {
+      aviso.innerHTML = '<div class="aviso error">Error: ' + err.message + '</div>';
+    }
+  };
+
+  document.getElementById('mesAnterior').onclick = () => { mesActual.setMonth(mesActual.getMonth() - 1); cargarCalendario(); };
+  document.getElementById('mesSiguiente').onclick = () => { mesActual.setMonth(mesActual.getMonth() + 1); cargarCalendario(); };
+
+  await cargarCalendario();
+  await cargarListaEventos();
+}
+
+async function obtenerTodosLosEventos() {
+  const snap = await getDocs(collection(db, 'agenda'));
+  let eventos = [];
+  snap.forEach(d => eventos.push({ id: d.id, ...d.data() }));
+  return eventos;
+}
+
+async function cargarCalendario() {
+  const grid = document.getElementById('calendarioGrid');
+  const titulo = document.getElementById('tituloMes');
+  if (!grid) return;
+
+  const nombresMeses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  titulo.textContent = nombresMeses[mesActual.getMonth()] + ' ' + mesActual.getFullYear();
+
+  const eventos = await obtenerTodosLosEventos();
+  const fechasConEvento = new Set(eventos.map(e => e.fecha));
+
+  const primerDia = new Date(mesActual.getFullYear(), mesActual.getMonth(), 1);
+  const ultimoDia = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, 0);
+  const diaSemanaInicio = primerDia.getDay();
+  const hoyStr = new Date().toISOString().slice(0, 10);
+
+  let html = ['D','L','M','M','J','V','S'].map(d => `<div class="diaSemana">${d}</div>`).join('');
+  for (let i = 0; i < diaSemanaInicio; i++) html += '<div></div>';
+  for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
+    const fechaStr = mesActual.getFullYear() + '-' + String(mesActual.getMonth() + 1).padStart(2, '0') + '-' + String(dia).padStart(2, '0');
+    const clases = ['diaCal'];
+    if (fechaStr === hoyStr) clases.push('hoy');
+    if (fechasConEvento.has(fechaStr)) clases.push('conEvento');
+    html += `<div class="${clases.join(' ')}">${dia}</div>`;
+  }
+  grid.innerHTML = html;
+}
+
+async function cargarListaEventos() {
+  const cont = document.getElementById('listaEventos');
+  if (!cont) return;
+  try {
+    const eventos = await obtenerTodosLosEventos();
+    const hoyStr = new Date().toISOString().slice(0, 10);
+    const futuros = eventos.filter(e => e.fecha >= hoyStr).sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+    if (futuros.length === 0) {
+      cont.innerHTML = '<p style="font-size:13px;color:#888;font-family:Arial;">No hay eventos próximos.</p>';
+      return;
+    }
+    cont.innerHTML = futuros.map(e => {
+      const [y, m, d] = e.fecha.split('-');
+      return `<div class="lista-item">📅 <strong>${d}/${m}/${y}</strong> — ${e.titulo}${e.clienteNombre ? ' (' + e.clienteNombre + ')' : ''}${e.nota ? '<br><span style="color:#666;">' + e.nota + '</span>' : ''}</div>`;
+    }).join('');
+  } catch (err) {
+    cont.innerHTML = '<p style="font-size:13px;color:#b32424;font-family:Arial;">Error: ' + err.message + '</p>';
+  }
+}
+
+async function revisarAlertasHoy() {
+  const box = document.getElementById('alertaHoyBox');
+  if (!box) return;
+  try {
+    const eventos = await obtenerTodosLosEventos();
+    const hoyStr = new Date().toISOString().slice(0, 10);
+    const deHoy = eventos.filter(e => e.fecha === hoyStr);
+    if (deHoy.length > 0) {
+      box.innerHTML = `<div class="alertaHoy">⚠️ Tenés ${deHoy.length} evento${deHoy.length > 1 ? 's' : ''} agendado${deHoy.length > 1 ? 's' : ''} para hoy: ${deHoy.map(e => e.titulo).join(', ')}</div>`;
+    }
+  } catch (err) {
+    box.innerHTML = '';
+  }
+}
+
+// ---------- CONTROLADOR PRINCIPAL ----------
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    pantallaLogin(false);
+    return;
+  }
+
+  if (user.email === ADMIN_EMAIL) {
+    pantallaAdmin(user);
+    return;
+  }
+
+  cuerpo.innerHTML = '<div class="carga-inicial" style="color:#0F1E3D;">Cargando tus datos...</div>';
+  try {
+    const snap = await getDoc(doc(db, 'clientes', user.uid));
+    if (snap.exists()) {
+      pantallaDashboard(user, snap.data());
+    } else {
+      pantallaFormulario(user);
+    }
+  } catch (err) {
+    cuerpo.innerHTML = '<div class="aviso error">Error al cargar: ' + err.message + '</div>';
+  }
+});
+</script>
+
+</body>
+</html>
