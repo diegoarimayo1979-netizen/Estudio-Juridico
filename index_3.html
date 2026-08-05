@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Portal de Clientes - Dr. Diego Mayorga</title>
+<link rel="icon" href="logo.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    background: linear-gradient(180deg, #0B1730 0%, #050B18 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px 16px;
+    color: #222;
+  }
+  .contenedor {
+    width: 100%;
+    max-width: 460px;
+    background: #FFFFFF;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    overflow: hidden;
+  }
+  .encabezado {
+    background: linear-gradient(180deg, #0F1E3D 0%, #08132A 100%);
+    padding: 28px 20px 20px;
+    text-align: center;
+  }
+  .encabezado img { width: 100px; height: 100px; border-radius: 50%; }
+  .encabezado h1 { color: #F6DE96; font-size: 20px; margin-top: 10px; letter-spacing: 1px; }
+  .encabezado p { color: #C7A85A; font-size: 13px; margin-top: 4px; }
+  .cuerpo { padding: 24px 20px; }
+  h2 { font-size: 17px; color: #0F1E3D; margin-bottom: 14px; }
+  label { display: block; font-size: 13px; font-weight: bold; color: #444; margin-top: 12px; margin-bottom: 4px; font-family: Arial, sans-serif; }
+  input[type=text], input[type=email], input[type=password], input[type=tel], textarea {
+    width: 100%;
+    padding: 11px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: Arial, sans-serif;
+  }
+  textarea { min-height: 90px; resize: vertical; }
+  button {
+    margin-top: 18px;
+    width: 100%;
+    background: #0F1E3D;
+    color: #F6DE96;
+    border: none;
+    padding: 13px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: bold;
+    font-family: Arial, sans-serif;
+    cursor: pointer;
+  }
+  button:hover { background: #182C56; }
+  button.secundario { background: #EFEFEF; color: #333; margin-top: 8px; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .enlace-cambio { text-align: center; margin-top: 14px; font-size: 13px; font-family: Arial, sans-serif; color: #555; cursor: pointer; text-decoration: underline; }
+  .aviso { margin-top: 12px; padding: 10px; border-radius: 8px; font-size: 13px; font-family: Arial, sans-serif; }
+  .aviso.ok { background: #e3f6e6; color: #1e7a34; }
+  .aviso.error { background: #fdeaea; color: #b32424; }
+  .oculto { display: none; }
+  .dato-cliente { background: #F5F0E1; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-family: Arial, sans-serif; font-size: 14px; }
+  .caja { border: 1px solid #e5e5e5; border-radius: 10px; padding: 16px; margin-top: 16px; }
+  .caja h3 { font-size: 14px; color: #0F1E3D; margin-bottom: 8px; font-family: Arial, sans-serif; }
+  .lista-item { font-size: 13px; font-family: Arial, sans-serif; padding: 8px 0; border-bottom: 1px solid #eee; }
+  .lista-item small { color: #888; display: block; margin-top: 2px; }
+  .salir { text-align: center; margin-top: 20px; font-size: 12px; color: #888; font-family: Arial, sans-serif; cursor: pointer; text-decoration: underline; }
+  .carga-inicial { text-align: center; padding: 60px 20px; color: #F6DE96; font-family: Arial, sans-serif; }
+</style>
+</head>
+<body>
+
+<div class="contenedor">
+
+  <div class="encabezado">
+    <img src="logo.png" alt="Logo Dr. Diego Mayorga">
+    <h1>Dr. Diego Mayorga</h1>
+    <p>Portal de Clientes · Tel 11 6469-4368</p>
+  </div>
+
+  <div class="cuerpo" id="cuerpo">
+    <div class="carga-inicial" style="color:#0F1E3D;">Cargando...</div>
+  </div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  signOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, collection, addDoc, query, orderBy, getDocs, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
+import {
+  getStorage, ref, uploadBytes, getDownloadURL
+} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-storage.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD6NK0CNaP_n8ncmSFp2A-MiQOVzt08RKM",
+  authDomain: "pagina-del-estudio-fc0cd.firebaseapp.com",
+  projectId: "pagina-del-estudio-fc0cd",
+  storageBucket: "pagina-del-estudio-fc0cd.firebasestorage.app",
+  messagingSenderId: "909709319888",
+  appId: "1:909709319888:web:083761641857378dcfc8d5",
+  measurementId: "G-YG7KQHSN0Q"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+const cuerpo = document.getElementById('cuerpo');
+
+// ---------- PANTALLA: LOGIN / REGISTRO ----------
+function pantallaLogin(modoRegistro = false) {
+  cuerpo.innerHTML = `
+    <h2>${modoRegistro ? 'Crear tu cuenta' : 'Iniciar sesión'}</h2>
+    <label>Email</label>
+    <input type="email" id="inEmail" placeholder="tu@email.com">
+    <label>Contraseña</label>
+    <input type="password" id="inPass" placeholder="Mínimo 6 caracteres">
+    <button id="btnAccion">${modoRegistro ? 'Crear cuenta' : 'Ingresar'}</button>
+    <div class="enlace-cambio" id="btnCambiar">
+      ${modoRegistro ? '¿Ya tenés cuenta? Iniciar sesión' : '¿Primera vez? Crear una cuenta'}
+    </div>
+    <div id="avisoLogin"></div>
+  `;
+
+  document.getElementById('btnCambiar').onclick = () => pantallaLogin(!modoRegistro);
+
+  document.getElementById('btnAccion').onclick = async () => {
+    const email = document.getElementById('inEmail').value.trim();
+    const pass = document.getElementById('inPass').value;
+    const aviso = document.getElementById('avisoLogin');
+    if (!email || !pass) {
+      aviso.innerHTML = '<div class="aviso error">Completá email y contraseña.</div>';
+      return;
+    }
+    aviso.innerHTML = '<div class="aviso ok">Procesando...</div>';
+    try {
+      if (modoRegistro) {
+        await createUserWithEmailAndPassword(auth, email, pass);
+      } else {
+        await signInWithEmailAndPassword(auth, email, pass);
+      }
+      // onAuthStateChanged se encarga de mostrar la siguiente pantalla
+    } catch (err) {
+      aviso.innerHTML = '<div class="aviso error">' + traducirError(err.code) + '</div>';
+    }
+  };
+}
+
+function traducirError(code) {
+  const mapa = {
+    'auth/email-already-in-use': 'Ese email ya tiene una cuenta creada. Probá iniciar sesión.',
+    'auth/invalid-email': 'El email no es válido.',
+    'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.',
+    'auth/invalid-credential': 'Email o contraseña incorrectos.',
+    'auth/wrong-password': 'Contraseña incorrecta.',
+    'auth/user-not-found': 'No existe una cuenta con ese email.'
+  };
+  return mapa[code] || 'Ocurrió un error. Intentá de nuevo.';
+}
+
+// ---------- PANTALLA: FORMULARIO DE REGISTRO DE DATOS ----------
+function pantallaFormulario(user) {
+  cuerpo.innerHTML = `
+    <h2>Completá tus datos</h2>
+    <label>Nombre completo</label>
+    <input type="text" id="fNombre">
+    <label>DNI</label>
+    <input type="text" id="fDni">
+    <label>Teléfono</label>
+    <input type="tel" id="fTelefono">
+    <label>Dirección</label>
+    <input type="text" id="fDireccion">
+    <button id="btnGuardar">Guardar y continuar</button>
+    <div id="avisoForm"></div>
+    <div class="salir" id="btnSalir">Cerrar sesión</div>
+  `;
+
+  document.getElementById('btnSalir').onclick = () => signOut(auth);
+
+  document.getElementById('btnGuardar').onclick = async () => {
+    const nombre = document.getElementById('fNombre').value.trim();
+    const dni = document.getElementById('fDni').value.trim();
+    const telefono = document.getElementById('fTelefono').value.trim();
+    const direccion = document.getElementById('fDireccion').value.trim();
+    const aviso = document.getElementById('avisoForm');
+
+    if (!nombre || !dni) {
+      aviso.innerHTML = '<div class="aviso error">Nombre y DNI son obligatorios.</div>';
+      return;
+    }
+    aviso.innerHTML = '<div class="aviso ok">Guardando...</div>';
+    try {
+      await setDoc(doc(db, 'clientes', user.uid), {
+        nombre, dni, telefono, direccion,
+        email: user.email,
+        fechaRegistro: serverTimestamp()
+      });
+      pantallaDashboard(user, { nombre, dni, telefono, direccion });
+    } catch (err) {
+      aviso.innerHTML = '<div class="aviso error">Error al guardar: ' + err.message + '</div>';
+    }
+  };
+}
+
+// ---------- PANTALLA: DASHBOARD (novedades + archivos) ----------
+async function pantallaDashboard(user, datos) {
+  cuerpo.innerHTML = `
+    <div class="dato-cliente">
+      <strong>${datos.nombre}</strong><br>
+      DNI: ${datos.dni} · Tel: ${datos.telefono || '-'}<br>
+      ${user.email}
+    </div>
+
+    <div class="caja">
+      <h3>Escribir una novedad o consulta</h3>
+      <textarea id="txtNovedad" placeholder="Contame qué necesitás..."></textarea>
+      <button id="btnNovedad">Enviar</button>
+      <div id="avisoNovedad"></div>
+    </div>
+
+    <div class="caja">
+      <h3>Subir un documento</h3>
+      <input type="file" id="archivoInput">
+      <button id="btnArchivo">Subir archivo</button>
+      <div id="avisoArchivo"></div>
+    </div>
+
+    <div class="caja">
+      <h3>Historial</h3>
+      <div id="listaHistorial">Cargando...</div>
+    </div>
+
+    <div class="salir" id="btnSalir">Cerrar sesión</div>
+  `;
+
+  document.getElementById('btnSalir').onclick = () => signOut(auth);
+
+  document.getElementById('btnNovedad').onclick = async () => {
+    const texto = document.getElementById('txtNovedad').value.trim();
+    const aviso = document.getElementById('avisoNovedad');
+    if (!texto) { aviso.innerHTML = '<div class="aviso error">Escribí algo primero.</div>'; return; }
+    aviso.innerHTML = '<div class="aviso ok">Enviando...</div>';
+    try {
+      await addDoc(collection(db, 'clientes', user.uid, 'novedades'), {
+        texto, fecha: serverTimestamp()
+      });
+      document.getElementById('txtNovedad').value = '';
+      aviso.innerHTML = '<div class="aviso ok">Enviado correctamente.</div>';
+      cargarHistorial(user.uid);
+    } catch (err) {
+      aviso.innerHTML = '<div class="aviso error">Error: ' + err.message + '</div>';
+    }
+  };
+
+  document.getElementById('btnArchivo').onclick = async () => {
+    const input = document.getElementById('archivoInput');
+    const aviso = document.getElementById('avisoArchivo');
+    if (!input.files.length) { aviso.innerHTML = '<div class="aviso error">Elegí un archivo primero.</div>'; return; }
+    const archivo = input.files[0];
+    aviso.innerHTML = '<div class="aviso ok">Subiendo...</div>';
+    try {
+      const refArchivo = ref(storage, 'clientes/' + user.uid + '/' + Date.now() + '_' + archivo.name);
+      await uploadBytes(refArchivo, archivo);
+      const url = await getDownloadURL(refArchivo);
+      await addDoc(collection(db, 'clientes', user.uid, 'archivos'), {
+        nombre: archivo.name, url, fecha: serverTimestamp()
+      });
+      input.value = '';
+      aviso.innerHTML = '<div class="aviso ok">Archivo subido correctamente.</div>';
+      cargarHistorial(user.uid);
+    } catch (err) {
+      aviso.innerHTML = '<div class="aviso error">Error: ' + err.message + '</div>';
+    }
+  };
+
+  cargarHistorial(user.uid);
+}
+
+async function cargarHistorial(uid) {
+  const cont = document.getElementById('listaHistorial');
+  if (!cont) return;
+  try {
+    const [novSnap, arcSnap] = await Promise.all([
+      getDocs(query(collection(db, 'clientes', uid, 'novedades'), orderBy('fecha', 'desc'))),
+      getDocs(query(collection(db, 'clientes', uid, 'archivos'), orderBy('fecha', 'desc')))
+    ]);
+    let items = [];
+    novSnap.forEach(d => items.push({ tipo: 'Nota', ...d.data() }));
+    arcSnap.forEach(d => items.push({ tipo: 'Archivo', ...d.data() }));
+    items.sort((a, b) => (b.fecha?.seconds || 0) - (a.fecha?.seconds || 0));
+
+    if (items.length === 0) {
+      cont.innerHTML = '<p style="font-size:13px;color:#888;font-family:Arial;">Todavía no hay novedades.</p>';
+      return;
+    }
+    cont.innerHTML = items.map(it => {
+      const fecha = it.fecha ? new Date(it.fecha.seconds * 1000).toLocaleString('es-AR') : '';
+      if (it.tipo === 'Archivo') {
+        return `<div class="lista-item">📎 <a href="${it.url}" target="_blank">${it.nombre}</a><small>${fecha}</small></div>`;
+      }
+      return `<div class="lista-item">💬 ${it.texto}<small>${fecha}</small></div>`;
+    }).join('');
+  } catch (err) {
+    cont.innerHTML = '<p style="font-size:13px;color:#b32424;font-family:Arial;">Error al cargar: ' + err.message + '</p>';
+  }
+}
+
+// ---------- CONTROLADOR PRINCIPAL ----------
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    pantallaLogin(false);
+    return;
+  }
+  cuerpo.innerHTML = '<div class="carga-inicial" style="color:#0F1E3D;">Cargando tus datos...</div>';
+  try {
+    const snap = await getDoc(doc(db, 'clientes', user.uid));
+    if (snap.exists()) {
+      pantallaDashboard(user, snap.data());
+    } else {
+      pantallaFormulario(user);
+    }
+  } catch (err) {
+    cuerpo.innerHTML = '<div class="aviso error">Error al cargar: ' + err.message + '</div>';
+  }
+});
+</script>
+
+</body>
+</html>
