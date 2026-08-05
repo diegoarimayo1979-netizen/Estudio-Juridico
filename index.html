@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -88,6 +89,7 @@
   .diaCal.hoy.conEvento::after { background: #F6DE96; }
   .diaSemana { text-align: center; font-size: 11px; color: #999; font-family: Arial, sans-serif; padding-bottom: 4px; }
   .alertaHoy { background: #FDEAEA; color: #b32424; padding: 10px; border-radius: 8px; font-family: Arial, sans-serif; font-size: 13px; margin-bottom: 14px; }
+  .estadoNotif { font-size: 12px; font-family: Arial, sans-serif; color: #888; text-align: center; margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -118,6 +120,9 @@ import {
 import {
   getStorage, ref, uploadBytes, getDownloadURL
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-storage.js";
+import {
+  getMessaging, getToken, onMessage
+} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-messaging.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD6NK0CNaP_n8ncmSFp2A-MiQOVzt08RKM",
@@ -134,9 +139,59 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
+const VAPID_KEY = "BJU0AV4xbR7cUg_D117cNDsNLM7YlslhiMG4Y--6PrxWuk8Rgax6jvTVsI-RfaiBy1pM1jtXT_L-cpjBae9QWf4";
+let messaging = null;
+try { messaging = getMessaging(app); } catch (e) { console.log('Messaging no disponible:', e.message); }
+
 const cuerpo = document.getElementById('cuerpo');
 const contenedorPrincipal = document.getElementById('contenedorPrincipal');
 const ADMIN_EMAIL = 'diegoarimayo1979@gmail.com';
+
+// ---------- NOTIFICACIONES PUSH (solo para el administrador) ----------
+async function activarNotificaciones(uid) {
+  const cajaEstado = document.getElementById('estadoNotif');
+  if (!('Notification' in window) || !messaging) {
+    if (cajaEstado) cajaEstado.textContent = 'Este navegador no soporta notificaciones.';
+    return;
+  }
+  try {
+    const permiso = await Notification.requestPermission();
+    if (permiso !== 'granted') {
+      if (cajaEstado) cajaEstado.textContent = 'Notificaciones desactivadas. Activalas desde el navegador si querés recibir alertas.';
+      return;
+    }
+    const registro = await navigator.serviceWorker.register('/Estudio-Juridico/firebase-messaging-sw.js');
+    const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registro });
+    if (token) {
+      await setDoc(doc(db, 'adminTokens', token), {
+        uid, fecha: serverTimestamp(), dispositivo: navigator.userAgent
+      });
+      if (cajaEstado) cajaEstado.textContent = '🔔 Notificaciones activadas en este dispositivo.';
+    }
+  } catch (err) {
+    console.log('No se pudo activar notificaciones:', err.message);
+    if (cajaEstado) cajaEstado.textContent = 'No se pudieron activar las notificaciones: ' + err.message;
+  }
+}
+
+function sonarAlerta() {
+  try {
+    const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+    audio.play().catch(() => {});
+  } catch (e) {}
+}
+
+if (messaging) {
+  onMessage(messaging, (payload) => {
+    sonarAlerta();
+    if (Notification.permission === 'granted') {
+      new Notification(payload.notification?.title || 'Portal Clientes', {
+        body: payload.notification?.body || '',
+        icon: 'logo.png'
+      });
+    }
+  });
+}
 
 // ---------- PANTALLA: LOGIN / REGISTRO ----------
 function pantallaLogin(modoRegistro = false) {
@@ -379,12 +434,14 @@ async function pantallaAdmin(user, tabInicial = 'clientes') {
       <div class="tab" id="tabAgenda">Agenda</div>
     </div>
     <div id="contenidoTab"></div>
+    <div class="estadoNotif" id="estadoNotif">Activando notificaciones...</div>
     <div class="salir" id="btnSalir">Cerrar sesión</div>
   `;
   document.getElementById('btnSalir').onclick = () => signOut(auth);
   document.getElementById('tabClientes').onclick = () => mostrarTabAdmin('clientes', user);
   document.getElementById('tabAgenda').onclick = () => mostrarTabAdmin('agenda', user);
 
+  activarNotificaciones(user.uid);
   await revisarAlertasHoy();
   mostrarTabAdmin(tabInicial, user);
 }
