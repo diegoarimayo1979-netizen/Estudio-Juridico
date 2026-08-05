@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -120,6 +121,7 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 
 const cuerpo = document.getElementById('cuerpo');
+const ADMIN_EMAIL = 'diegoarimayo1979@gmail.com';
 
 // ---------- PANTALLA: LOGIN / REGISTRO ----------
 function pantallaLogin(modoRegistro = false) {
@@ -319,12 +321,93 @@ async function cargarHistorial(uid) {
   }
 }
 
+// ---------- PANTALLA: ADMINISTRADOR (lista de todos los clientes) ----------
+async function pantallaAdmin(user) {
+  cuerpo.innerHTML = `
+    <h2>Panel de Administrador</h2>
+    <p style="font-family:Arial;font-size:13px;color:#888;margin-bottom:10px;">Conectado como ${user.email}</p>
+    <div id="listaClientesAdmin">Cargando clientes...</div>
+    <div class="salir" id="btnSalir">Cerrar sesión</div>
+  `;
+  document.getElementById('btnSalir').onclick = () => signOut(auth);
+
+  const cont = document.getElementById('listaClientesAdmin');
+  try {
+    const snap = await getDocs(collection(db, 'clientes'));
+    if (snap.empty) {
+      cont.innerHTML = '<p style="font-family:Arial;font-size:13px;color:#888;">Todavía no hay clientes registrados.</p>';
+      return;
+    }
+    let html = '';
+    snap.forEach(d => {
+      const c = d.data();
+      html += `
+        <div class="caja" style="cursor:pointer;" data-uid="${d.id}">
+          <h3 style="margin-bottom:4px;">${c.nombre || '(sin nombre)'}</h3>
+          <p style="font-family:Arial;font-size:12px;color:#666;">
+            DNI: ${c.dni || '-'} · Tel: ${c.telefono || '-'}<br>${c.email || ''}
+          </p>
+          <div class="detalleCliente oculto" style="margin-top:10px;"></div>
+        </div>
+      `;
+    });
+    cont.innerHTML = html;
+
+    cont.querySelectorAll('[data-uid]').forEach(el => {
+      el.addEventListener('click', async (e) => {
+        const detalle = el.querySelector('.detalleCliente');
+        const yaAbierto = !detalle.classList.contains('oculto');
+        cont.querySelectorAll('.detalleCliente').forEach(d => d.classList.add('oculto'));
+        if (yaAbierto) return;
+        detalle.classList.remove('oculto');
+        detalle.innerHTML = 'Cargando...';
+        await cargarHistorialAdmin(el.dataset.uid, detalle);
+      });
+    });
+  } catch (err) {
+    cont.innerHTML = '<div class="aviso error">Error al cargar clientes: ' + err.message + '</div>';
+  }
+}
+
+async function cargarHistorialAdmin(uid, contenedor) {
+  try {
+    const [novSnap, arcSnap] = await Promise.all([
+      getDocs(query(collection(db, 'clientes', uid, 'novedades'), orderBy('fecha', 'desc'))),
+      getDocs(query(collection(db, 'clientes', uid, 'archivos'), orderBy('fecha', 'desc')))
+    ]);
+    let items = [];
+    novSnap.forEach(d => items.push({ tipo: 'Nota', ...d.data() }));
+    arcSnap.forEach(d => items.push({ tipo: 'Archivo', ...d.data() }));
+    items.sort((a, b) => (b.fecha?.seconds || 0) - (a.fecha?.seconds || 0));
+
+    if (items.length === 0) {
+      contenedor.innerHTML = '<p style="font-size:13px;color:#888;font-family:Arial;">Sin novedades todavía.</p>';
+      return;
+    }
+    contenedor.innerHTML = items.map(it => {
+      const fecha = it.fecha ? new Date(it.fecha.seconds * 1000).toLocaleString('es-AR') : '';
+      if (it.tipo === 'Archivo') {
+        return `<div class="lista-item">📎 <a href="${it.url}" target="_blank">${it.nombre}</a><small>${fecha}</small></div>`;
+      }
+      return `<div class="lista-item">💬 ${it.texto}<small>${fecha}</small></div>`;
+    }).join('');
+  } catch (err) {
+    contenedor.innerHTML = '<p style="font-size:13px;color:#b32424;font-family:Arial;">Error: ' + err.message + '</p>';
+  }
+}
+
 // ---------- CONTROLADOR PRINCIPAL ----------
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     pantallaLogin(false);
     return;
   }
+
+  if (user.email === ADMIN_EMAIL) {
+    pantallaAdmin(user);
+    return;
+  }
+
   cuerpo.innerHTML = '<div class="carga-inicial" style="color:#0F1E3D;">Cargando tus datos...</div>';
   try {
     const snap = await getDoc(doc(db, 'clientes', user.uid));
