@@ -434,14 +434,15 @@ async function pantallaAdmin(user, tabInicial = 'clientes') {
       <div class="tab" id="tabAgenda">Agenda</div>
     </div>
     <div id="contenidoTab"></div>
-    <div class="estadoNotif" id="estadoNotif">Activando notificaciones...</div>
+    <button class="chica" id="btnActivarNotif" style="width:auto;">🔔 Activar notificaciones</button>
+    <div class="estadoNotif" id="estadoNotif"></div>
     <div class="salir" id="btnSalir">Cerrar sesión</div>
   `;
   document.getElementById('btnSalir').onclick = () => signOut(auth);
   document.getElementById('tabClientes').onclick = () => mostrarTabAdmin('clientes', user);
   document.getElementById('tabAgenda').onclick = () => mostrarTabAdmin('agenda', user);
+  document.getElementById('btnActivarNotif').onclick = () => activarNotificaciones(user.uid);
 
-  activarNotificaciones(user.uid);
   await revisarAlertasHoy();
   mostrarTabAdmin(tabInicial, user);
 }
