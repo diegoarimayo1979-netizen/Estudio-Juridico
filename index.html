@@ -118,7 +118,7 @@ import {
   signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, collection, addDoc, query, orderBy, getDocs, serverTimestamp
+  getFirestore, doc, getDoc, setDoc, collection, addDoc, query, orderBy, getDocs, serverTimestamp, deleteDoc
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
 import {
   getStorage, ref, uploadBytes, getDownloadURL
@@ -515,18 +515,20 @@ async function renderDetalleCliente(uid, contenedor) {
       getDocs(query(collection(db, 'clientes', uid, 'mensajes'), orderBy('fecha', 'desc')))
     ]);
     let items = [];
-    novSnap.forEach(d => items.push({ tipo: 'Nota', ...d.data() }));
-    arcSnap.forEach(d => items.push({ tipo: 'Archivo', ...d.data() }));
+    novSnap.forEach(d => items.push({ tipo: 'Nota', id: d.id, ...d.data() }));
+    arcSnap.forEach(d => items.push({ tipo: 'Archivo', id: d.id, ...d.data() }));
     items.sort((a, b) => (b.fecha?.seconds || 0) - (a.fecha?.seconds || 0));
 
     let htmlItems = items.length === 0
       ? '<p style="font-size:13px;color:#888;font-family:Arial;">Sin novedades todavía.</p>'
       : items.map(it => {
           const fecha = it.fecha ? new Date(it.fecha.seconds * 1000).toLocaleString('es-AR') : '';
+          const coleccion = it.tipo === 'Archivo' ? 'archivos' : 'novedades';
+          const botonBorrar = `<span class="btnBorrarItem" data-uid="${uid}" data-coleccion="${coleccion}" data-id="${it.id}" style="float:right;cursor:pointer;color:#b32424;">🗑️</span>`;
           if (it.tipo === 'Archivo') {
-            return `<div class="lista-item">📎 <a href="${it.url}" target="_blank">${it.nombre}</a><small>${fecha}</small></div>`;
+            return `<div class="lista-item">📎 <a href="${it.url}" target="_blank">${it.nombre}</a>${botonBorrar}<small>${fecha}</small></div>`;
           }
-          return `<div class="lista-item">💬 ${it.texto}<small>${fecha}</small></div>`;
+          return `<div class="lista-item">💬 ${it.texto}${botonBorrar}<small>${fecha}</small></div>`;
         }).join('');
 
     let htmlMsgs = '';
@@ -546,6 +548,21 @@ async function renderDetalleCliente(uid, contenedor) {
       <button class="chica btnEnviarMsgAdmin" data-uid="${uid}">Enviar mensaje</button>
       <div class="avisoMsgAdmin"></div>
     `;
+
+    contenedor.querySelectorAll('.btnBorrarItem').forEach(el => {
+      el.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const ok = confirm('¿Borrar este item? No se puede deshacer.');
+        if (!ok) return;
+        const { uid: u, coleccion, id } = el.dataset;
+        try {
+          await deleteDoc(doc(db, 'clientes', u, coleccion, id));
+          renderDetalleCliente(u, contenedor);
+        } catch (err) {
+          alert('Error al borrar: ' + err.message);
+        }
+      });
+    });
 
     contenedor.querySelector('.btnEnviarMsgAdmin').addEventListener('click', async (e) => {
       e.stopPropagation();
