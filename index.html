@@ -6,6 +6,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Portal de Clientes - Dr. Diego Mayorga</title>
 <link rel="icon" href="logo.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0F1E3D">
+<link rel="apple-touch-icon" href="logo.png">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -143,6 +146,11 @@ const VAPID_KEY = "BJU0AV4xbR7cUg_D117cNDsNLM7YlslhiMG4Y--6PrxWuk8Rgax6jvTVsI-Rf
 let messaging = null;
 try { messaging = getMessaging(app); } catch (e) { console.log('Messaging no disponible:', e.message); }
 
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/Estudio-Juridico/firebase-messaging-sw.js')
+    .catch(e => console.log('No se pudo registrar el service worker:', e.message));
+}
+
 const cuerpo = document.getElementById('cuerpo');
 const contenedorPrincipal = document.getElementById('contenedorPrincipal');
 const ADMIN_EMAIL = 'diegoarimayo1979@gmail.com';
@@ -160,7 +168,7 @@ async function activarNotificaciones(uid) {
       if (cajaEstado) cajaEstado.textContent = 'Notificaciones desactivadas. Activalas desde el navegador si querés recibir alertas.';
       return;
     }
-    const registro = await navigator.serviceWorker.register('/Estudio-Juridico/firebase-messaging-sw.js');
+    const registro = await navigator.serviceWorker.ready;
     const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registro });
     if (token) {
       await setDoc(doc(db, 'adminTokens', token), {
