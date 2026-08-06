@@ -1,0 +1,13 @@
+{
+  "name": "Portal de Clientes - Dr. Diego Mayorga",
+  "short_name": "Portal Clientes",
+  "start_url": "/Estudio-Juridico/",
+  "scope": "/Estudio-Juridico/",
+  "display": "standalone",
+  "background_color": "#0B1730",
+  "theme_color": "#0F1E3D",
+  "icons": [
+    { "src": "logo.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "logo.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
