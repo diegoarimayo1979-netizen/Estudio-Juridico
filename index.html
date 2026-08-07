@@ -784,8 +784,9 @@ async function renderTabAgenda(user) {
     try {
       const clienteObj = clienteUid ? cacheClientes.find(c => c.uid === clienteUid) : null;
       const clienteNombre = clienteObj ? nombreCompleto(clienteObj) : '';
+      const clienteTelefono = clienteObj ? (clienteObj.telefono || '') : '';
       await addDoc(collection(db, 'agenda'), {
-        fecha, titulo, nota, clienteUid, clienteNombre,
+        fecha, titulo, nota, clienteUid, clienteNombre, clienteTelefono,
         fechaCreacion: serverTimestamp()
       });
       aviso.innerHTML = '<div class="aviso ok">Evento guardado.</div>';
@@ -840,6 +841,14 @@ async function cargarCalendario() {
   grid.innerHTML = html;
 }
 
+// ---------- WHATSAPP: armar link con mensaje precargado ----------
+function linkWhatsapp(telefono, mensaje) {
+  const digitos = (telefono || '').replace(/\D/g, '');
+  if (!digitos) return null;
+  const numero = digitos.startsWith('54') ? digitos : '549' + digitos.replace(/^0/, '');
+  return 'https://wa.me/' + numero + '?text=' + encodeURIComponent(mensaje);
+}
+
 async function cargarListaEventos() {
   const cont = document.getElementById('listaEventos');
   if (!cont) return;
@@ -854,7 +863,13 @@ async function cargarListaEventos() {
     }
     cont.innerHTML = futuros.map(e => {
       const [y, m, d] = e.fecha.split('-');
-      return `<div class="lista-item">📅 <strong>${d}/${m}/${y}</strong> — ${e.titulo}${e.clienteNombre ? ' (' + e.clienteNombre + ')' : ''}${e.nota ? '<br><span style="color:#666;">' + e.nota + '</span>' : ''}</div>`;
+      let botonWa = '';
+      if (e.clienteTelefono) {
+        const mensaje = `Hola ${e.clienteNombre || ''}, le recuerdo desde el estudio del Dr. Diego Mayorga: ${e.titulo} el ${d}/${m}/${y}.`;
+        const link = linkWhatsapp(e.clienteTelefono, mensaje);
+        if (link) botonWa = ` <a href="${link}" target="_blank" style="color:#1ea952;text-decoration:none;">📲 WhatsApp</a>`;
+      }
+      return `<div class="lista-item">📅 <strong>${d}/${m}/${y}</strong> — ${e.titulo}${e.clienteNombre ? ' (' + e.clienteNombre + ')' : ''}${botonWa}${e.nota ? '<br><span style="color:#666;">' + e.nota + '</span>' : ''}</div>`;
     }).join('');
   } catch (err) {
     cont.innerHTML = '<p style="font-size:13px;color:#b32424;font-family:Arial;">Error: ' + err.message + '</p>';
