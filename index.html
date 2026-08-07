@@ -465,6 +465,10 @@ function formatearFecha(fechaStr) {
 function pantallaFormulario(user) {
   contenedorPrincipal.classList.remove('ancho');
   const provincias = Object.keys(PROVINCIAS_LOCALIDADES);
+  const ESTADOS_CIVILES = ['Soltero/a', 'Casado/a', 'Divorciado/a', 'Viudo/a', 'Unión convivencial'];
+  const AREAS_CONSULTA = ['Civil', 'Laboral', 'Familia', 'Penal', 'Comercial', 'Sucesiones', 'Otro'];
+  const COMO_CONOCIO = ['Referido', 'Redes sociales', 'Google', 'Otro'];
+
   cuerpo.innerHTML = `
     <h2>Completá tus datos</h2>
     <label>Apellido</label>
@@ -473,12 +477,25 @@ function pantallaFormulario(user) {
     <input type="text" id="fNombre">
     <label>Fecha de nacimiento</label>
     <input type="date" id="fFechaNacimiento">
+    <label>Nacionalidad</label>
+    <input type="text" id="fNacionalidad" placeholder="Argentina">
     <label>DNI</label>
     <input type="text" id="fDni">
+    <label>CUIT/CUIL</label>
+    <input type="text" id="fCuit" placeholder="20-12345678-9">
+    <label>Estado civil</label>
+    <select id="fEstadoCivil">
+      <option value="">Elegí una opción...</option>
+      ${ESTADOS_CIVILES.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}
+    </select>
+    <label>Ocupación / profesión</label>
+    <input type="text" id="fOcupacion">
     <label>Teléfono</label>
     <input type="tel" id="fTelefono">
     <label>Dirección (calle y número)</label>
     <input type="text" id="fDireccion">
+    <label>Código postal</label>
+    <input type="text" id="fCodigoPostal">
     <label>Provincia</label>
     <select id="fProvincia">
       <option value="">Elegí una provincia...</option>
@@ -489,6 +506,24 @@ function pantallaFormulario(user) {
       <option value="">Elegí primero la provincia...</option>
     </select>
     <input type="text" id="fLocalidadOtra" placeholder="Escribí tu localidad" class="oculto" style="margin-top:8px;">
+    <label>Área de consulta</label>
+    <select id="fAreaConsulta">
+      <option value="">Elegí una opción...</option>
+      ${AREAS_CONSULTA.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}
+    </select>
+    <label>Contacto de referencia - Nombre (opcional)</label>
+    <input type="text" id="fContactoNombre">
+    <label>Contacto de referencia - Teléfono (opcional)</label>
+    <input type="tel" id="fContactoTelefono">
+    <label>¿Cómo nos conociste?</label>
+    <select id="fComoConocio">
+      <option value="">Elegí una opción...</option>
+      ${COMO_CONOCIO.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}
+    </select>
+    <label style="display:flex;align-items:flex-start;gap:8px;margin-top:18px;font-weight:normal;">
+      <input type="checkbox" id="fAceptaPrivacidad" style="width:auto;margin-top:3px;">
+      <span>Acepto que mis datos sean utilizados para la gestión de mi caso, según la <a href="privacidad.html" target="_blank">Política de Privacidad</a>.</span>
+    </label>
     <button id="btnGuardar">Guardar y continuar</button>
     <div id="avisoForm"></div>
     <div class="salir" id="btnSalir">Cerrar sesión</div>
@@ -527,24 +562,44 @@ function pantallaFormulario(user) {
     const apellido = document.getElementById('fApellido').value.trim();
     const nombre = document.getElementById('fNombre').value.trim();
     const fechaNacimiento = document.getElementById('fFechaNacimiento').value;
+    const nacionalidad = document.getElementById('fNacionalidad').value.trim();
     const dni = document.getElementById('fDni').value.trim();
+    const cuit = document.getElementById('fCuit').value.trim();
+    const estadoCivil = document.getElementById('fEstadoCivil').value;
+    const ocupacion = document.getElementById('fOcupacion').value.trim();
     const telefono = document.getElementById('fTelefono').value.trim();
     const direccion = document.getElementById('fDireccion').value.trim();
+    const codigoPostal = document.getElementById('fCodigoPostal').value.trim();
     const provincia = document.getElementById('fProvincia').value;
     const localidadSelect = document.getElementById('fLocalidad').value;
     const localidadOtra = document.getElementById('fLocalidadOtra').value.trim();
     const localidad = localidadSelect === OPCION_OTRA_LOCALIDAD ? localidadOtra : localidadSelect;
+    const areaConsulta = document.getElementById('fAreaConsulta').value;
+    const contactoNombre = document.getElementById('fContactoNombre').value.trim();
+    const contactoTelefono = document.getElementById('fContactoTelefono').value.trim();
+    const comoConocio = document.getElementById('fComoConocio').value;
+    const aceptaPrivacidad = document.getElementById('fAceptaPrivacidad').checked;
     const aviso = document.getElementById('avisoForm');
 
     if (!apellido || !nombre || !dni) {
       aviso.innerHTML = '<div class="aviso error">Apellido, nombre y DNI son obligatorios.</div>';
       return;
     }
+    if (!aceptaPrivacidad) {
+      aviso.innerHTML = '<div class="aviso error">Debés aceptar la Política de Privacidad para continuar.</div>';
+      return;
+    }
     aviso.innerHTML = '<div class="aviso ok">Guardando...</div>';
     try {
-      const datos = { apellido, nombre, dni, telefono, direccion, provincia, localidad, fechaNacimiento };
+      const datos = {
+        apellido, nombre, dni, telefono, direccion, provincia, localidad, fechaNacimiento,
+        nacionalidad, cuit, estadoCivil, ocupacion, codigoPostal, areaConsulta,
+        contactoNombre, contactoTelefono, comoConocio
+      };
       await setDoc(doc(db, 'clientes', user.uid), {
         ...datos,
+        aceptaPrivacidad: true,
+        fechaAceptacionPrivacidad: serverTimestamp(),
         email: user.email,
         fechaRegistro: serverTimestamp()
       });
@@ -567,9 +622,11 @@ async function pantallaDashboard(user, datos) {
   cuerpo.innerHTML = `
     <div class="dato-cliente">
       <strong>${esc(nombreCompleto(datos))}</strong><br>
-      DNI: ${esc(datos.dni)} · Tel: ${esc(datos.telefono) || '-'}<br>
+      DNI: ${esc(datos.dni)}${datos.cuit ? ' · CUIT: ' + esc(datos.cuit) : ''} · Tel: ${esc(datos.telefono) || '-'}<br>
       ${datos.localidad || datos.provincia ? esc([datos.localidad, datos.provincia].filter(Boolean).join(', ')) + '<br>' : ''}
       ${datos.fechaNacimiento ? 'Nacimiento: ' + esc(formatearFecha(datos.fechaNacimiento)) + '<br>' : ''}
+      ${datos.estadoCivil || datos.ocupacion ? esc([datos.estadoCivil, datos.ocupacion].filter(Boolean).join(' · ')) + '<br>' : ''}
+      ${datos.areaConsulta ? 'Consulta: ' + esc(datos.areaConsulta) + '<br>' : ''}
       ${esc(user.email)}
     </div>
 
@@ -875,6 +932,24 @@ function dibujarListaClientes(filtro) {
 
 async function renderDetalleCliente(uid, contenedor) {
   try {
+    const c = cacheClientes.find(x => x.uid === uid) || {};
+    const filasDatos = [
+      ['Nacionalidad', c.nacionalidad],
+      ['CUIT/CUIL', c.cuit],
+      ['Estado civil', c.estadoCivil],
+      ['Ocupación', c.ocupacion],
+      ['Dirección', [c.direccion, c.codigoPostal].filter(Boolean).join(' - ')],
+      ['Área de consulta', c.areaConsulta],
+      ['Contacto de referencia', [c.contactoNombre, c.contactoTelefono].filter(Boolean).join(' - ')],
+      ['Cómo nos conoció', c.comoConocio]
+    ].filter(([, valor]) => valor);
+
+    const htmlDatos = filasDatos.length
+      ? `<div class="caja"><h3 style="margin-bottom:6px;">Datos del cliente</h3>` +
+        filasDatos.map(([label, valor]) => `<p style="font-family:Arial;font-size:13px;margin-top:4px;"><strong>${esc(label)}:</strong> ${esc(valor)}</p>`).join('') +
+        `</div>`
+      : '';
+
     const [novSnap, arcSnap, msgSnap] = await Promise.all([
       getDocs(query(collection(db, 'clientes', uid, 'novedades'), orderBy('fecha', 'desc'))),
       getDocs(query(collection(db, 'clientes', uid, 'archivos'), orderBy('fecha', 'desc'))),
@@ -905,6 +980,7 @@ async function renderDetalleCliente(uid, contenedor) {
     });
 
     contenedor.innerHTML = `
+      ${htmlDatos}
       <h3 style="margin-bottom:6px;">Historial</h3>
       ${htmlItems}
       <h3 style="margin-top:14px;margin-bottom:6px;">Mensajes que le enviaste</h3>
