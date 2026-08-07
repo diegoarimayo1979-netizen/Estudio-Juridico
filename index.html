@@ -95,6 +95,21 @@
   .diaSemana { text-align: center; font-size: 11px; color: #999; font-family: Arial, sans-serif; padding-bottom: 4px; }
   .alertaHoy { background: #FDEAEA; color: #b32424; padding: 10px; border-radius: 8px; font-family: Arial, sans-serif; font-size: 13px; margin-bottom: 14px; }
   .estadoNotif { font-size: 12px; font-family: Arial, sans-serif; color: #888; text-align: center; margin-top: 10px; }
+  #btnAbrirBot {
+    position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; border-radius: 50%;
+    margin: 0; padding: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 26px; box-shadow: 0 4px 14px rgba(0,0,0,0.35); z-index: 999;
+  }
+  #panelBot {
+    position: fixed; bottom: 86px; right: 20px; width: 300px; max-width: calc(100vw - 40px);
+    max-height: 420px; background: #fff; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+    z-index: 999; overflow-y: auto; padding: 14px;
+  }
+  #botHeader {
+    font-family: Arial, sans-serif; font-weight: bold; color: #0F1E3D; display: flex;
+    justify-content: space-between; align-items: center; padding-bottom: 10px; margin-bottom: 8px;
+    border-bottom: 1px solid #eee;
+  }
 </style>
 </head>
 <body>
@@ -111,6 +126,15 @@
     <div class="carga-inicial" style="color:#0F1E3D;">Cargando...</div>
   </div>
 
+</div>
+
+<button id="btnAbrirBot" title="Ayuda rápida">💬</button>
+<div id="panelBot" class="oculto">
+  <div id="botHeader">
+    <span>Ayuda rápida</span>
+    <span id="btnCerrarBot" style="cursor:pointer;">✕</span>
+  </div>
+  <div id="botLista"></div>
 </div>
 
 <script type="module">
@@ -156,6 +180,52 @@ if ('serviceWorker' in navigator) {
 const cuerpo = document.getElementById('cuerpo');
 const contenedorPrincipal = document.getElementById('contenedorPrincipal');
 const ADMIN_EMAIL = 'diegoarimayo1979@gmail.com';
+
+// ---------- BOT DE AYUDA RÁPIDA (preguntas frecuentes) ----------
+// Para editar las preguntas/respuestas, modificá esta lista.
+const FAQ_BOT = [
+  { pregunta: '¿Cuál es el horario de atención?', respuesta: 'Atendemos de lunes a viernes de 9 a 18 hs. Podés escribirnos por el portal en cualquier momento y te respondemos a la brevedad.' },
+  { pregunta: '¿Cómo pido un turno?', respuesta: 'Escribinos tu consulta en la sección "Escribir una novedad" del portal, contándonos el motivo, y te vamos a contactar para coordinar un turno.' },
+  { pregunta: '¿Qué documentos necesito llevar?', respuesta: 'En general: tu DNI y toda la documentación relacionada con tu consulta (contratos, notificaciones, etc.). Si tenés dudas puntuales, escribinos por el portal.' },
+  { pregunta: '¿Cómo subo un documento al portal?', respuesta: 'Entrá a tu cuenta, en la sección "Escribir una novedad o enviar un documento" tocá "Seleccionar archivo", elegí el archivo y tocá "Enviar".' },
+  { pregunta: '¿Cómo consulto los honorarios?', respuesta: 'Los honorarios dependen de cada caso particular. Escribinos tu consulta por el portal y te vamos a informar.' },
+  { pregunta: '¿Olvidé mi contraseña, qué hago?', respuesta: 'Por el momento, llamanos al 11 6469-4368 para ayudarte a recuperar el acceso a tu cuenta.' },
+  { pregunta: '¿Cómo me contacto directamente?', respuesta: 'Podés llamarnos al 11 6469-4368, o escribirnos un mensaje desde este mismo portal y te respondemos a la brevedad.' }
+];
+
+function wireBotAyuda() {
+  const btnAbrir = document.getElementById('btnAbrirBot');
+  const panel = document.getElementById('panelBot');
+  const btnCerrar = document.getElementById('btnCerrarBot');
+  const lista = document.getElementById('botLista');
+  if (!btnAbrir || !panel || !lista) return;
+
+  function mostrarLista() {
+    lista.innerHTML = FAQ_BOT.map((item, i) =>
+      `<button class="btnFaqItem" data-i="${i}" style="display:block;width:100%;text-align:left;margin-top:6px;background:#F5F0E1;color:#0F1E3D;padding:9px;border:none;border-radius:6px;font-size:13px;font-family:Arial,sans-serif;font-weight:normal;cursor:pointer;">${esc(item.pregunta)}</button>`
+    ).join('');
+    lista.querySelectorAll('.btnFaqItem').forEach(btn => {
+      btn.onclick = () => mostrarRespuesta(parseInt(btn.dataset.i, 10));
+    });
+  }
+
+  function mostrarRespuesta(i) {
+    const item = FAQ_BOT[i];
+    lista.innerHTML = `
+      <p style="font-family:Arial,sans-serif;font-size:13px;font-weight:bold;color:#0F1E3D;">${esc(item.pregunta)}</p>
+      <p style="font-family:Arial,sans-serif;font-size:13px;margin-top:8px;">${esc(item.respuesta)}</p>
+      <button id="btnVolverFaq" style="margin-top:14px;padding:7px 12px;font-size:12px;width:auto;">⬅ Volver</button>
+    `;
+    document.getElementById('btnVolverFaq').onclick = mostrarLista;
+  }
+
+  btnAbrir.onclick = () => {
+    panel.classList.toggle('oculto');
+    if (!panel.classList.contains('oculto')) mostrarLista();
+  };
+  btnCerrar.onclick = () => panel.classList.add('oculto');
+}
+wireBotAyuda();
 
 // ---------- INSTALACIÓN DE LA APP (PWA) ----------
 let deferredInstallPrompt = null;
