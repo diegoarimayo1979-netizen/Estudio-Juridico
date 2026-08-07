@@ -569,21 +569,23 @@ function formatearFecha(fechaStr) {
   return `${d}/${m}/${y}`;
 }
 
-function pantallaFormulario(user) {
+function pantallaFormulario(user, datosExistentes = null) {
   contenedorPrincipal.classList.remove('ancho');
   const provincias = Object.keys(PROVINCIAS_LOCALIDADES);
   const ESTADOS_CIVILES = ['Soltero/a', 'Casado/a', 'Divorciado/a', 'Viudo/a', 'Unión convivencial'];
   const AREAS_CONSULTA = ['Civil', 'Laboral', 'Familia', 'Penal', 'Comercial', 'Sucesiones', 'Otro'];
   const COMO_CONOCIO = ['Referido', 'Redes sociales', 'Google', 'Otro'];
+  const d = datosExistentes || {};
+  const esEdicion = !!datosExistentes;
 
   cuerpo.innerHTML = `
-    <h2>Completá tus datos</h2>
+    <h2>${esEdicion ? 'Editar mis datos' : 'Completá tus datos'}</h2>
     <label>Apellido</label>
-    <input type="text" id="fApellido">
+    <input type="text" id="fApellido" value="${esc(d.apellido || '')}">
     <label>Nombre</label>
-    <input type="text" id="fNombre">
+    <input type="text" id="fNombre" value="${esc(d.nombre || '')}">
     <label>Fecha de nacimiento</label>
-    <input type="date" id="fFechaNacimiento">
+    <input type="date" id="fFechaNacimiento" value="${esc(d.fechaNacimiento || '')}">
     <label>Nacionalidad</label>
     <select id="fNacionalidad">
       <option value="">Elegí una opción...</option>
@@ -592,22 +594,22 @@ function pantallaFormulario(user) {
     </select>
     <input type="text" id="fNacionalidadOtra" placeholder="Escribí tu nacionalidad" class="oculto" style="margin-top:8px;">
     <label>DNI</label>
-    <input type="text" id="fDni">
+    <input type="text" id="fDni" value="${esc(d.dni || '')}">
     <label>CUIT/CUIL</label>
-    <input type="tel" id="fCuit" placeholder="20-12345678-9">
+    <input type="tel" id="fCuit" placeholder="20-12345678-9" value="${esc(d.cuit || '')}">
     <label>Estado civil</label>
     <select id="fEstadoCivil">
       <option value="">Elegí una opción...</option>
       ${ESTADOS_CIVILES.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}
     </select>
     <label>Ocupación / profesión</label>
-    <input type="text" id="fOcupacion">
+    <input type="text" id="fOcupacion" value="${esc(d.ocupacion || '')}">
     <label>Teléfono</label>
-    <input type="tel" id="fTelefono">
+    <input type="tel" id="fTelefono" value="${esc(d.telefono || '')}">
     <label>Dirección (calle y número)</label>
-    <input type="text" id="fDireccion">
+    <input type="text" id="fDireccion" value="${esc(d.direccion || '')}">
     <label>Código postal</label>
-    <input type="text" id="fCodigoPostal">
+    <input type="text" id="fCodigoPostal" value="${esc(d.codigoPostal || '')}">
     <label>Provincia</label>
     <select id="fProvincia">
       <option value="">Elegí una provincia...</option>
@@ -624,31 +626,56 @@ function pantallaFormulario(user) {
       ${AREAS_CONSULTA.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}
     </select>
     <label>Contacto de referencia - Nombre (opcional)</label>
-    <input type="text" id="fContactoNombre">
+    <input type="text" id="fContactoNombre" value="${esc(d.contactoNombre || '')}">
     <label>Contacto de referencia - Teléfono (opcional)</label>
-    <input type="tel" id="fContactoTelefono">
+    <input type="tel" id="fContactoTelefono" value="${esc(d.contactoTelefono || '')}">
     <label>¿Cómo nos conociste?</label>
     <select id="fComoConocio">
       <option value="">Elegí una opción...</option>
       ${COMO_CONOCIO.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}
     </select>
     <label style="display:flex;align-items:flex-start;gap:8px;margin-top:18px;font-weight:normal;">
-      <input type="checkbox" id="fAceptaPrivacidad" style="width:auto;margin-top:3px;">
+      <input type="checkbox" id="fAceptaPrivacidad" style="width:auto;margin-top:3px;" ${d.aceptaPrivacidad ? 'checked' : ''}>
       <span>Acepto que mis datos sean utilizados para la gestión de mi caso, según la <a href="privacidad.html" target="_blank">Política de Privacidad</a>.</span>
     </label>
-    <button id="btnGuardar">Guardar y continuar</button>
+    <button id="btnGuardar">${esEdicion ? 'Guardar cambios' : 'Guardar y continuar'}</button>
     <div id="avisoForm"></div>
+    ${esEdicion ? '<div class="enlace-cambio" id="btnCancelarEdicion">Cancelar y volver</div>' : ''}
     <div class="salir" id="btnSalir">Cerrar sesión</div>
   `;
 
   document.getElementById('btnSalir').onclick = () => signOut(auth);
+  const btnCancelar = document.getElementById('btnCancelarEdicion');
+  if (btnCancelar) btnCancelar.onclick = () => pantallaDashboard(user, d);
 
-  document.getElementById('fProvincia').addEventListener('change', (e) => {
+  // Preseleccionar Nacionalidad si ya tenía un valor cargado
+  const selectNacionalidad = document.getElementById('fNacionalidad');
+  if (d.nacionalidad) {
+    const opciones = Array.from(selectNacionalidad.options).map(o => o.value);
+    if (opciones.includes(d.nacionalidad)) {
+      selectNacionalidad.value = d.nacionalidad;
+    } else {
+      selectNacionalidad.value = OPCION_OTRA_LOCALIDAD;
+      document.getElementById('fNacionalidadOtra').classList.remove('oculto');
+      document.getElementById('fNacionalidadOtra').value = d.nacionalidad;
+    }
+  }
+
+  // Preseleccionar Estado civil / Área de consulta / Cómo nos conoció
+  if (d.estadoCivil) document.getElementById('fEstadoCivil').value = d.estadoCivil;
+  if (d.areaConsulta) document.getElementById('fAreaConsulta').value = d.areaConsulta;
+  if (d.comoConocio) document.getElementById('fComoConocio').value = d.comoConocio;
+
+  // Preseleccionar Provincia y Localidad
+  const selectProvincia = document.getElementById('fProvincia');
+  if (d.provincia) selectProvincia.value = d.provincia;
+
+  function actualizarLocalidades(provinciaSeleccionada, localidadPrecargada) {
     const selectLocalidad = document.getElementById('fLocalidad');
     const inputOtra = document.getElementById('fLocalidadOtra');
     inputOtra.classList.add('oculto');
     inputOtra.value = '';
-    const localidades = PROVINCIAS_LOCALIDADES[e.target.value];
+    const localidades = PROVINCIAS_LOCALIDADES[provinciaSeleccionada];
     if (!localidades) {
       selectLocalidad.innerHTML = '<option value="">Elegí primero la provincia...</option>';
       selectLocalidad.disabled = true;
@@ -658,6 +685,21 @@ function pantallaFormulario(user) {
     selectLocalidad.innerHTML = '<option value="">Elegí una localidad...</option>'
       + localidades.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('')
       + `<option value="${esc(OPCION_OTRA_LOCALIDAD)}">${esc(OPCION_OTRA_LOCALIDAD)}</option>`;
+    if (localidadPrecargada) {
+      if (localidades.includes(localidadPrecargada)) {
+        selectLocalidad.value = localidadPrecargada;
+      } else {
+        selectLocalidad.value = OPCION_OTRA_LOCALIDAD;
+        inputOtra.classList.remove('oculto');
+        inputOtra.value = localidadPrecargada;
+      }
+    }
+  }
+
+  if (d.provincia) actualizarLocalidades(d.provincia, d.localidad);
+
+  document.getElementById('fProvincia').addEventListener('change', (e) => {
+    actualizarLocalidades(e.target.value, null);
   });
 
   document.getElementById('fLocalidad').addEventListener('change', (e) => {
@@ -728,13 +770,14 @@ function pantallaFormulario(user) {
         nacionalidad, cuit, estadoCivil, ocupacion, codigoPostal, areaConsulta,
         contactoNombre, contactoTelefono, comoConocio
       };
-      await setDoc(doc(db, 'clientes', user.uid), {
+      const datosAGuardar = {
         ...datos,
         aceptaPrivacidad: true,
         fechaAceptacionPrivacidad: serverTimestamp(),
-        email: user.email,
-        fechaRegistro: serverTimestamp()
-      });
+        email: user.email
+      };
+      if (!esEdicion) datosAGuardar.fechaRegistro = serverTimestamp();
+      await setDoc(doc(db, 'clientes', user.uid), datosAGuardar, { merge: true });
       pantallaDashboard(user, datos);
     } catch (err) {
       aviso.innerHTML = '<div class="aviso error">Error al guardar: ' + err.message + '</div>';
@@ -759,7 +802,8 @@ async function pantallaDashboard(user, datos) {
       ${datos.fechaNacimiento ? 'Nacimiento: ' + esc(formatearFecha(datos.fechaNacimiento)) + '<br>' : ''}
       ${datos.estadoCivil || datos.ocupacion ? esc([datos.estadoCivil, datos.ocupacion].filter(Boolean).join(' · ')) + '<br>' : ''}
       ${datos.areaConsulta ? 'Consulta: ' + esc(datos.areaConsulta) + '<br>' : ''}
-      ${esc(user.email)}
+      ${esc(user.email)}<br>
+      <span id="btnEditarDatos" style="cursor:pointer;text-decoration:underline;font-size:13px;color:#0F1E3D;">✏️ Editar mis datos</span>
     </div>
 
     <div class="caja">
@@ -800,6 +844,7 @@ async function pantallaDashboard(user, datos) {
   wireControlBloqueo();
   document.getElementById('btnSalir').onclick = () => signOut(auth);
   document.getElementById('btnActivarNotif').onclick = () => activarNotificaciones(user.uid, false);
+  document.getElementById('btnEditarDatos').onclick = () => pantallaFormulario(user, datos);
 
   document.getElementById('btnEnviarNovedad').onclick = async () => {
     const texto = document.getElementById('txtNovedad').value.trim();
