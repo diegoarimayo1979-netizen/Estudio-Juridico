@@ -189,7 +189,7 @@ const FAQ_BOT = [
   { pregunta: '¿Qué documentos necesito llevar?', respuesta: 'En general: tu DNI y toda la documentación relacionada con tu consulta (contratos, notificaciones, etc.). Si tenés dudas puntuales, escribinos por el portal.' },
   { pregunta: '¿Cómo subo un documento al portal?', respuesta: 'Entrá a tu cuenta, en la sección "Escribir una novedad o enviar un documento" tocá "Seleccionar archivo", elegí el archivo y tocá "Enviar".' },
   { pregunta: '¿Cómo consulto los honorarios?', respuesta: 'Los honorarios dependen de cada caso particular. Escribinos tu consulta por el portal y te vamos a informar.' },
-  { pregunta: '¿Olvidé mi contraseña, qué hago?', respuesta: 'En la pantalla de inicio de sesión, tocá "¿Olvidaste tu contraseña?", escribí tu email, y te vamos a enviar un link para elegir una contraseña nueva.' },
+  { pregunta: '¿Olvidé mi contraseña, qué hago?', respuesta: 'En la pantalla de inicio de sesión, tocá "¿Olvidaste tu contraseña?", escribí tu email, y te vamos a enviar un link para elegir una contraseña nueva. Si no lo ves en tu bandeja de entrada, revisá también la carpeta de spam o correo no deseado.' },
   { pregunta: '¿Cómo me contacto directamente?', respuesta: 'Podés llamarnos al 11 6469-4368, o escribirnos un mensaje desde este mismo portal y te respondemos a la brevedad.' }
 ];
 
@@ -479,7 +479,7 @@ function pantallaLogin(modoRegistro = false) {
       aviso.innerHTML = '<div class="aviso ok">Enviando...</div>';
       try {
         await sendPasswordResetEmail(auth, email);
-        aviso.innerHTML = '<div class="aviso ok">Si ese email tiene una cuenta creada, te enviamos un link para restablecer tu contraseña. Revisá tu bandeja de entrada (y spam).</div>';
+        aviso.innerHTML = '<div class="aviso ok">Si ese email tiene una cuenta creada, te enviamos un link para restablecer tu contraseña. Revisá tu bandeja de entrada y, si no lo ves ahí, también la carpeta de spam o correo no deseado.</div>';
       } catch (err) {
         aviso.innerHTML = '<div class="aviso error">' + traducirError(err.code) + '</div>';
       }
