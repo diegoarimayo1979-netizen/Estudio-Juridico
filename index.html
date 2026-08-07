@@ -145,7 +145,7 @@ import {
   signOut, onAuthStateChanged, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, collection, addDoc, query, orderBy, getDocs, serverTimestamp, deleteDoc
+  getFirestore, doc, getDoc, setDoc, collection, addDoc, query, orderBy, where, getDocs, serverTimestamp, deleteDoc
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
 import {
   getStorage, ref, uploadBytes, getDownloadURL
@@ -375,7 +375,7 @@ function wireControlBloqueo() {
 }
 
 // ---------- NOTIFICACIONES PUSH (solo para el administrador) ----------
-async function activarNotificaciones(uid) {
+async function activarNotificaciones(uid, esAdmin) {
   const cajaEstado = document.getElementById('estadoNotif');
   if (!('Notification' in window) || !messaging) {
     if (cajaEstado) cajaEstado.textContent = 'Este navegador no soporta notificaciones.';
@@ -390,9 +390,15 @@ async function activarNotificaciones(uid) {
     const registro = await navigator.serviceWorker.ready;
     const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registro });
     if (token) {
-      await setDoc(doc(db, 'adminTokens', token), {
-        uid, fecha: serverTimestamp(), dispositivo: navigator.userAgent
-      });
+      if (esAdmin) {
+        await setDoc(doc(db, 'adminTokens', token), {
+          uid, fecha: serverTimestamp(), dispositivo: navigator.userAgent
+        });
+      } else {
+        await setDoc(doc(db, 'clientes', uid, 'tokens', token), {
+          fecha: serverTimestamp(), dispositivo: navigator.userAgent
+        });
+      }
       if (cajaEstado) cajaEstado.textContent = '🔔 Notificaciones activadas en este dispositivo.';
     }
   } catch (err) {
@@ -785,12 +791,15 @@ async function pantallaDashboard(user, datos) {
       <div id="listaHistorial">Cargando...</div>
     </div>
 
+    <button class="chica" id="btnActivarNotif" style="width:auto;">🔔 Activar notificaciones</button>
+    <div class="estadoNotif" id="estadoNotif"></div>
     ${htmlControlBloqueo()}
     <div class="salir" id="btnSalir">Cerrar sesión</div>
   `;
 
   wireControlBloqueo();
   document.getElementById('btnSalir').onclick = () => signOut(auth);
+  document.getElementById('btnActivarNotif').onclick = () => activarNotificaciones(user.uid, false);
 
   document.getElementById('btnEnviarNovedad').onclick = async () => {
     const texto = document.getElementById('txtNovedad').value.trim();
@@ -855,7 +864,7 @@ async function cargarPresupuestosCliente(uid) {
         <button class="chica btnAceptarPresupuesto" data-id="${d.id}" style="width:auto;background:#1e7a34;">Aceptar</button>
         <button class="chica btnRechazarPresupuesto" data-id="${d.id}" style="width:auto;background:#b32424;margin-left:8px;">Rechazar</button>
       `;
-      if (p.estado === 'aceptado') { estadoTexto = '✅ Aceptado'; botones = ''; }
+      if (p.estado === 'aceptado') { estadoTexto = '✅ Aceptado' + (p.pagado ? ' · 💰 Pagado' : ' · Pendiente de pago'); botones = ''; }
       if (p.estado === 'rechazado') { estadoTexto = '❌ Rechazado'; botones = ''; }
       return `<div class="lista-item">
         <strong>${esc(formatearMonto(p.monto))}</strong> — ${esc(p.descripcion)}<br>
@@ -996,6 +1005,7 @@ async function pantallaAdmin(user, tabInicial = 'clientes') {
   cuerpo.innerHTML = `
     <h2>Panel de Administrador</h2>
     <p style="font-family:Arial;font-size:13px;color:#888;margin-bottom:10px;">Conectado como ${esc(user.email)}</p>
+    <div id="estadisticasBox"></div>
     <div id="alertaHoyBox"></div>
     <div id="alertaProximosBox"></div>
     <div id="alertaMensajesBox"></div>
@@ -1015,13 +1025,51 @@ async function pantallaAdmin(user, tabInicial = 'clientes') {
   document.getElementById('btnSalir').onclick = () => signOut(auth);
   document.getElementById('tabClientes').onclick = () => mostrarTabAdmin('clientes', user);
   document.getElementById('tabAgenda').onclick = () => mostrarTabAdmin('agenda', user);
-  document.getElementById('btnActivarNotif').onclick = () => activarNotificaciones(user.uid);
+  document.getElementById('btnActivarNotif').onclick = () => activarNotificaciones(user.uid, true);
   document.getElementById('btnExportarBackup').onclick = () => exportarBackup();
 
+  await mostrarEstadisticas();
   await revisarAlertasHoy();
   await revisarProximosVencimientos();
   await revisarMensajesNuevos();
   mostrarTabAdmin(tabInicial, user);
+}
+
+async function mostrarEstadisticas() {
+  const box = document.getElementById('estadisticasBox');
+  if (!box) return;
+  try {
+    const clientesSnap = await getDocs(collection(db, 'clientes'));
+    const totalClientes = clientesSnap.size;
+    const mensajesSinResponder = clientesSnap.docs.filter(d => d.data().tieneNuevo).length;
+
+    let presupuestosPendientes = 0;
+    await Promise.all(clientesSnap.docs.map(async d => {
+      const presSnap = await getDocs(query(collection(db, 'clientes', d.id, 'presupuestos'), where('estado', '==', 'pendiente')));
+      presupuestosPendientes += presSnap.size;
+    }));
+
+    const eventos = await obtenerTodosLosEventos();
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const finSemana = new Date(hoy);
+    finSemana.setDate(finSemana.getDate() + 7);
+    const eventosSemana = eventos.filter(e => {
+      const f = new Date(e.fecha + 'T00:00:00');
+      return f >= hoy && f <= finSemana;
+    }).length;
+
+    box.innerHTML = `
+      <div class="caja" style="display:flex;flex-wrap:wrap;gap:16px;justify-content:space-around;text-align:center;">
+        <div><div style="font-size:22px;font-weight:bold;color:#0F1E3D;">${totalClientes}</div><div style="font-size:12px;font-family:Arial,sans-serif;color:#666;">Clientes</div></div>
+        <div><div style="font-size:22px;font-weight:bold;color:#0F1E3D;">${mensajesSinResponder}</div><div style="font-size:12px;font-family:Arial,sans-serif;color:#666;">Mensajes nuevos</div></div>
+        <div><div style="font-size:22px;font-weight:bold;color:#0F1E3D;">${presupuestosPendientes}</div><div style="font-size:12px;font-family:Arial,sans-serif;color:#666;">Presupuestos pendientes</div></div>
+        <div><div style="font-size:22px;font-weight:bold;color:#0F1E3D;">${eventosSemana}</div><div style="font-size:12px;font-family:Arial,sans-serif;color:#666;">Eventos esta semana</div></div>
+      </div>
+    `;
+  } catch (err) {
+    box.innerHTML = '';
+  }
 }
 
 async function exportarBackup() {
@@ -1231,7 +1279,13 @@ async function renderDetalleCliente(uid, contenedor) {
       const fecha = p.fecha ? new Date(p.fecha.seconds * 1000).toLocaleDateString('es-AR') : '';
       const estados = { pendiente: '⏳ Pendiente', aceptado: '✅ Aceptado', rechazado: '❌ Rechazado' };
       const botonBorrar = `<span class="btnBorrarItem" data-uid="${uid}" data-coleccion="presupuestos" data-id="${d.id}" style="float:right;cursor:pointer;color:#b32424;">🗑️</span>`;
-      htmlPresupuestos += `<div class="lista-item"><strong>${esc(formatearMonto(p.monto))}</strong> — ${esc(p.descripcion)}${botonBorrar}<small>${fecha} · ${estados[p.estado] || p.estado}</small></div>`;
+      let infoPago = '';
+      if (p.estado === 'aceptado') {
+        infoPago = p.pagado
+          ? ' · 💰 Pagado'
+          : ` · <span class="btnMarcarPagado" data-uid="${uid}" data-id="${d.id}" style="cursor:pointer;color:#1e7a34;text-decoration:underline;">Marcar como pagado</span>`;
+      }
+      htmlPresupuestos += `<div class="lista-item"><strong>${esc(formatearMonto(p.monto))}</strong> — ${esc(p.descripcion)}${botonBorrar}<small>${fecha} · ${estados[p.estado] || p.estado}${infoPago}</small></div>`;
     });
 
     let htmlAutorizaciones = '';
@@ -1318,6 +1372,20 @@ async function renderDetalleCliente(uid, contenedor) {
           renderDetalleCliente(u, contenedor);
         } catch (err) {
           alert('Error al borrar: ' + err.message);
+        }
+      });
+    });
+
+    contenedor.querySelectorAll('.btnMarcarPagado').forEach(el => {
+      el.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try {
+          await setDoc(doc(db, 'clientes', el.dataset.uid, 'presupuestos', el.dataset.id), {
+            pagado: true, fechaPago: serverTimestamp()
+          }, { merge: true });
+          renderDetalleCliente(uid, contenedor);
+        } catch (err) {
+          alert('Error: ' + err.message);
         }
       });
     });
