@@ -164,6 +164,105 @@ function esc(valor) {
   }[c]));
 }
 
+// ---------- BLOQUEO CON HUELLA / FACE ID (WebAuthn, local al dispositivo) ----------
+function tieneCredencialGuardada() {
+  return !!localStorage.getItem('bioCredId');
+}
+
+async function activarBloqueoHuella() {
+  if (!window.PublicKeyCredential) {
+    alert('Este navegador no soporta bloqueo con huella o Face ID.');
+    return;
+  }
+  try {
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+    const userId = crypto.getRandomValues(new Uint8Array(16));
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: { name: 'Portal de Clientes - Dr. Diego Mayorga' },
+        user: {
+          id: userId,
+          name: auth.currentUser?.email || 'usuario',
+          displayName: auth.currentUser?.email || 'usuario'
+        },
+        pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+        authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+        timeout: 60000
+      }
+    });
+    const credIdB64 = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+    localStorage.setItem('bioCredId', credIdB64);
+    alert('Bloqueo con huella/Face ID activado en este dispositivo.');
+  } catch (err) {
+    alert('No se pudo activar el bloqueo: ' + err.message);
+  }
+}
+
+function desactivarBloqueoHuella() {
+  localStorage.removeItem('bioCredId');
+  alert('Bloqueo con huella/Face ID desactivado en este dispositivo.');
+}
+
+async function pedirDesbloqueoHuella() {
+  const credIdB64 = localStorage.getItem('bioCredId');
+  if (!credIdB64) return true;
+  try {
+    const credIdBytes = Uint8Array.from(atob(credIdB64), (c) => c.charCodeAt(0));
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+    await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        allowCredentials: [{ id: credIdBytes, type: 'public-key' }],
+        userVerification: 'required',
+        timeout: 60000
+      }
+    });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+function pantallaBloqueo(onDesbloqueado) {
+  contenedorPrincipal.classList.remove('ancho');
+  cuerpo.innerHTML = `
+    <div class="carga-inicial" style="color:#0F1E3D;">
+      <p style="margin-bottom:16px;font-size:16px;">🔒 Portal bloqueado</p>
+      <button id="btnDesbloquear" style="width:auto;padding:12px 24px;">Desbloquear con huella / Face ID</button>
+      <div id="avisoBloqueo" style="margin-top:12px;"></div>
+    </div>
+  `;
+  document.getElementById('btnDesbloquear').onclick = async () => {
+    const aviso = document.getElementById('avisoBloqueo');
+    aviso.innerHTML = '<div class="aviso ok">Verificando...</div>';
+    const ok = await pedirDesbloqueoHuella();
+    if (ok) {
+      onDesbloqueado();
+    } else {
+      aviso.innerHTML = '<div class="aviso error">No se pudo verificar. Intentá de nuevo.</div>';
+    }
+  };
+}
+
+function htmlControlBloqueo() {
+  const activo = tieneCredencialGuardada();
+  return `<button class="chica" id="btnBloqueoHuella" style="width:auto;">${activo ? '🔓 Desactivar bloqueo con huella' : '🔒 Activar bloqueo con huella'}</button>`;
+}
+
+function wireControlBloqueo() {
+  const btn = document.getElementById('btnBloqueoHuella');
+  if (!btn) return;
+  btn.onclick = async () => {
+    if (tieneCredencialGuardada()) {
+      desactivarBloqueoHuella();
+    } else {
+      await activarBloqueoHuella();
+    }
+    btn.textContent = tieneCredencialGuardada() ? '🔓 Desactivar bloqueo con huella' : '🔒 Activar bloqueo con huella';
+  };
+}
+
 // ---------- NOTIFICACIONES PUSH (solo para el administrador) ----------
 async function activarNotificaciones(uid) {
   const cajaEstado = document.getElementById('estadoNotif');
@@ -344,9 +443,11 @@ async function pantallaDashboard(user, datos) {
       <div id="listaHistorial">Cargando...</div>
     </div>
 
+    ${htmlControlBloqueo()}
     <div class="salir" id="btnSalir">Cerrar sesión</div>
   `;
 
+  wireControlBloqueo();
   document.getElementById('btnSalir').onclick = () => signOut(auth);
 
   document.getElementById('btnEnviarNovedad').onclick = async () => {
@@ -457,8 +558,10 @@ async function pantallaAdmin(user, tabInicial = 'clientes') {
     <div class="estadoNotif" id="estadoNotif"></div>
     <button class="chica" id="btnExportarBackup" style="width:auto;">📥 Exportar backup completo</button>
     <div id="avisoBackup"></div>
+    ${htmlControlBloqueo()}
     <div class="salir" id="btnSalir">Cerrar sesión</div>
   `;
+  wireControlBloqueo();
   document.getElementById('btnSalir').onclick = () => signOut(auth);
   document.getElementById('tabClientes').onclick = () => mostrarTabAdmin('clientes', user);
   document.getElementById('tabAgenda').onclick = () => mostrarTabAdmin('agenda', user);
@@ -949,21 +1052,29 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  if (user.email === ADMIN_EMAIL) {
-    pantallaAdmin(user);
-    return;
-  }
-
-  cuerpo.innerHTML = '<div class="carga-inicial" style="color:#0F1E3D;">Cargando tus datos...</div>';
-  try {
-    const snap = await getDoc(doc(db, 'clientes', user.uid));
-    if (snap.exists()) {
-      pantallaDashboard(user, snap.data());
-    } else {
-      pantallaFormulario(user);
+  const mostrarContenido = async () => {
+    if (user.email === ADMIN_EMAIL) {
+      pantallaAdmin(user);
+      return;
     }
-  } catch (err) {
-    cuerpo.innerHTML = '<div class="aviso error">Error al cargar: ' + err.message + '</div>';
+
+    cuerpo.innerHTML = '<div class="carga-inicial" style="color:#0F1E3D;">Cargando tus datos...</div>';
+    try {
+      const snap = await getDoc(doc(db, 'clientes', user.uid));
+      if (snap.exists()) {
+        pantallaDashboard(user, snap.data());
+      } else {
+        pantallaFormulario(user);
+      }
+    } catch (err) {
+      cuerpo.innerHTML = '<div class="aviso error">Error al cargar: ' + err.message + '</div>';
+    }
+  };
+
+  if (tieneCredencialGuardada()) {
+    pantallaBloqueo(mostrarContenido);
+  } else {
+    mostrarContenido();
   }
 });
 </script>
