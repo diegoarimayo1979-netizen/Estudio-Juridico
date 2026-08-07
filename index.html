@@ -141,7 +141,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js";
 import {
   getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
-  signOut, onAuthStateChanged
+  signOut, onAuthStateChanged, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, collection, addDoc, query, orderBy, getDocs, serverTimestamp, deleteDoc
@@ -189,7 +189,7 @@ const FAQ_BOT = [
   { pregunta: '¿Qué documentos necesito llevar?', respuesta: 'En general: tu DNI y toda la documentación relacionada con tu consulta (contratos, notificaciones, etc.). Si tenés dudas puntuales, escribinos por el portal.' },
   { pregunta: '¿Cómo subo un documento al portal?', respuesta: 'Entrá a tu cuenta, en la sección "Escribir una novedad o enviar un documento" tocá "Seleccionar archivo", elegí el archivo y tocá "Enviar".' },
   { pregunta: '¿Cómo consulto los honorarios?', respuesta: 'Los honorarios dependen de cada caso particular. Escribinos tu consulta por el portal y te vamos a informar.' },
-  { pregunta: '¿Olvidé mi contraseña, qué hago?', respuesta: 'Por el momento, llamanos al 11 6469-4368 para ayudarte a recuperar el acceso a tu cuenta.' },
+  { pregunta: '¿Olvidé mi contraseña, qué hago?', respuesta: 'En la pantalla de inicio de sesión, tocá "¿Olvidaste tu contraseña?", escribí tu email, y te vamos a enviar un link para elegir una contraseña nueva.' },
   { pregunta: '¿Cómo me contacto directamente?', respuesta: 'Podés llamarnos al 11 6469-4368, o escribirnos un mensaje desde este mismo portal y te respondemos a la brevedad.' }
 ];
 
@@ -446,6 +446,7 @@ function pantallaLogin(modoRegistro = false) {
     <div class="enlace-cambio" id="btnCambiar">
       ${modoRegistro ? '¿Ya tenés cuenta? Iniciar sesión' : '¿Primera vez? Crear una cuenta'}
     </div>
+    ${!modoRegistro ? '<div class="enlace-cambio" id="btnOlvide">¿Olvidaste tu contraseña?</div>' : ''}
     <div id="avisoLogin"></div>
     ${htmlCajaInstalar()}
   `;
@@ -458,12 +459,35 @@ function pantallaLogin(modoRegistro = false) {
     inputOtro.classList.toggle('oculto', e.target.value !== 'otro');
   });
 
-  document.getElementById('btnAccion').onclick = async () => {
+  function obtenerEmailIngresado() {
     const usuario = document.getElementById('inEmailUsuario').value.trim();
     const dominioSelect = document.getElementById('inEmailDominio').value;
     const dominioOtro = document.getElementById('inEmailDominioOtro').value.trim();
     const dominio = dominioSelect === 'otro' ? dominioOtro : dominioSelect;
-    const email = usuario.includes('@') ? usuario : (usuario && dominio ? `${usuario}@${dominio}` : '');
+    return usuario.includes('@') ? usuario : (usuario && dominio ? `${usuario}@${dominio}` : '');
+  }
+
+  const btnOlvide = document.getElementById('btnOlvide');
+  if (btnOlvide) {
+    btnOlvide.onclick = async () => {
+      const email = obtenerEmailIngresado();
+      const aviso = document.getElementById('avisoLogin');
+      if (!email) {
+        aviso.innerHTML = '<div class="aviso error">Escribí primero tu email arriba, y después tocá "¿Olvidaste tu contraseña?".</div>';
+        return;
+      }
+      aviso.innerHTML = '<div class="aviso ok">Enviando...</div>';
+      try {
+        await sendPasswordResetEmail(auth, email);
+        aviso.innerHTML = '<div class="aviso ok">Si ese email tiene una cuenta creada, te enviamos un link para restablecer tu contraseña. Revisá tu bandeja de entrada (y spam).</div>';
+      } catch (err) {
+        aviso.innerHTML = '<div class="aviso error">' + traducirError(err.code) + '</div>';
+      }
+    };
+  }
+
+  document.getElementById('btnAccion').onclick = async () => {
+    const email = obtenerEmailIngresado();
     const pass = document.getElementById('inPass').value;
     const aviso = document.getElementById('avisoLogin');
     if (!email || !pass) {
