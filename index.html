@@ -355,7 +355,21 @@ function pantallaLogin(modoRegistro = false) {
   cuerpo.innerHTML = `
     <h2>${modoRegistro ? 'Crear tu cuenta' : 'Iniciar sesión'}</h2>
     <label>Email</label>
-    <input type="email" id="inEmail" placeholder="tu@email.com">
+    <div style="display:flex;gap:6px;align-items:center;">
+      <input type="text" id="inEmailUsuario" placeholder="usuario" style="flex:1;min-width:0;" autocapitalize="off">
+      <span>@</span>
+      <select id="inEmailDominio" style="flex:1;min-width:0;">
+        <option value="gmail.com">gmail.com</option>
+        <option value="outlook.com">outlook.com</option>
+        <option value="hotmail.com">hotmail.com</option>
+        <option value="yahoo.com">yahoo.com</option>
+        <option value="yahoo.com.ar">yahoo.com.ar</option>
+        <option value="icloud.com">icloud.com</option>
+        <option value="live.com.ar">live.com.ar</option>
+        <option value="otro">Otro (escribir)</option>
+      </select>
+    </div>
+    <input type="text" id="inEmailDominioOtro" placeholder="tudominio.com" class="oculto" style="margin-top:8px;" autocapitalize="off">
     <label>Contraseña</label>
     <input type="password" id="inPass" placeholder="Mínimo 6 caracteres">
     <button id="btnAccion">${modoRegistro ? 'Crear cuenta' : 'Ingresar'}</button>
@@ -369,8 +383,17 @@ function pantallaLogin(modoRegistro = false) {
   wireCajaInstalar();
   document.getElementById('btnCambiar').onclick = () => pantallaLogin(!modoRegistro);
 
+  document.getElementById('inEmailDominio').addEventListener('change', (e) => {
+    const inputOtro = document.getElementById('inEmailDominioOtro');
+    inputOtro.classList.toggle('oculto', e.target.value !== 'otro');
+  });
+
   document.getElementById('btnAccion').onclick = async () => {
-    const email = document.getElementById('inEmail').value.trim();
+    const usuario = document.getElementById('inEmailUsuario').value.trim();
+    const dominioSelect = document.getElementById('inEmailDominio').value;
+    const dominioOtro = document.getElementById('inEmailDominioOtro').value.trim();
+    const dominio = dominioSelect === 'otro' ? dominioOtro : dominioSelect;
+    const email = usuario && dominio ? `${usuario}@${dominio}` : '';
     const pass = document.getElementById('inPass').value;
     const aviso = document.getElementById('avisoLogin');
     if (!email || !pass) {
