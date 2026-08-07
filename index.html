@@ -581,7 +581,38 @@ async function renderDetalleCliente(uid, contenedor) {
       <input type="file" class="archivoMsgAdmin">
       <button class="chica btnEnviarMsgAdmin" data-uid="${uid}">Enviar mensaje</button>
       <div class="avisoMsgAdmin"></div>
+      <button class="chica btnEliminarCliente" data-uid="${uid}" style="background:#b32424;color:#fff;margin-top:20px;">🗑️ Eliminar cliente</button>
+      <div class="avisoEliminarCliente"></div>
     `;
+
+    contenedor.querySelector('.btnEliminarCliente').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const btn = e.target;
+      const aviso = contenedor.querySelector('.avisoEliminarCliente');
+      const primeraConfirmacion = confirm('¿Eliminar a este cliente? Se van a borrar su ficha, novedades, archivos y mensajes. Esta acción no se puede deshacer.');
+      if (!primeraConfirmacion) return;
+      const segundaConfirmacion = confirm('Confirmá de nuevo: esto es permanente. ¿Eliminar de todas formas?');
+      if (!segundaConfirmacion) return;
+      aviso.innerHTML = '<div class="aviso ok">Eliminando...</div>';
+      try {
+        const u = btn.dataset.uid;
+        const [novSnap2, arcSnap2, msgSnap2] = await Promise.all([
+          getDocs(collection(db, 'clientes', u, 'novedades')),
+          getDocs(collection(db, 'clientes', u, 'archivos')),
+          getDocs(collection(db, 'clientes', u, 'mensajes'))
+        ]);
+        const borrados = [];
+        novSnap2.forEach(d => borrados.push(deleteDoc(doc(db, 'clientes', u, 'novedades', d.id))));
+        arcSnap2.forEach(d => borrados.push(deleteDoc(doc(db, 'clientes', u, 'archivos', d.id))));
+        msgSnap2.forEach(d => borrados.push(deleteDoc(doc(db, 'clientes', u, 'mensajes', d.id))));
+        await Promise.all(borrados);
+        await deleteDoc(doc(db, 'clientes', u));
+        cacheClientes = cacheClientes.filter(c => c.uid !== u);
+        contenedor.closest('.fila-cliente')?.remove();
+      } catch (err) {
+        aviso.innerHTML = '<div class="aviso error">Error al eliminar: ' + err.message + '</div>';
+      }
+    });
 
     contenedor.querySelectorAll('.btnBorrarItem').forEach(el => {
       el.addEventListener('click', async (e) => {
