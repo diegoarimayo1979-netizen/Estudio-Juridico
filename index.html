@@ -439,6 +439,7 @@ async function pantallaAdmin(user, tabInicial = 'clientes') {
     <h2>Panel de Administrador</h2>
     <p style="font-family:Arial;font-size:13px;color:#888;margin-bottom:10px;">Conectado como ${user.email}</p>
     <div id="alertaHoyBox"></div>
+    <div id="alertaProximosBox"></div>
     <div id="alertaMensajesBox"></div>
     <div class="tabs">
       <div class="tab" id="tabClientes">Clientes</div>
@@ -447,16 +448,64 @@ async function pantallaAdmin(user, tabInicial = 'clientes') {
     <div id="contenidoTab"></div>
     <button class="chica" id="btnActivarNotif" style="width:auto;">🔔 Activar notificaciones</button>
     <div class="estadoNotif" id="estadoNotif"></div>
+    <button class="chica" id="btnExportarBackup" style="width:auto;">📥 Exportar backup completo</button>
+    <div id="avisoBackup"></div>
     <div class="salir" id="btnSalir">Cerrar sesión</div>
   `;
   document.getElementById('btnSalir').onclick = () => signOut(auth);
   document.getElementById('tabClientes').onclick = () => mostrarTabAdmin('clientes', user);
   document.getElementById('tabAgenda').onclick = () => mostrarTabAdmin('agenda', user);
   document.getElementById('btnActivarNotif').onclick = () => activarNotificaciones(user.uid);
+  document.getElementById('btnExportarBackup').onclick = () => exportarBackup();
 
   await revisarAlertasHoy();
+  await revisarProximosVencimientos();
   await revisarMensajesNuevos();
   mostrarTabAdmin(tabInicial, user);
+}
+
+async function exportarBackup() {
+  const aviso = document.getElementById('avisoBackup');
+  aviso.innerHTML = '<div class="aviso ok">Generando backup, puede tardar unos segundos...</div>';
+  try {
+    const clientesSnap = await getDocs(collection(db, 'clientes'));
+    const clientesData = [];
+    for (const cDoc of clientesSnap.docs) {
+      const cData = { uid: cDoc.id, ...cDoc.data() };
+      const [novSnap, arcSnap, msgSnap] = await Promise.all([
+        getDocs(collection(db, 'clientes', cDoc.id, 'novedades')),
+        getDocs(collection(db, 'clientes', cDoc.id, 'archivos')),
+        getDocs(collection(db, 'clientes', cDoc.id, 'mensajes'))
+      ]);
+      cData.novedades = novSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      cData.archivos = arcSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      cData.mensajes = msgSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      clientesData.push(cData);
+    }
+    const agendaSnap = await getDocs(collection(db, 'agenda'));
+    const agendaData = agendaSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    const backup = { generadoEl: new Date().toISOString(), clientes: clientesData, agenda: agendaData };
+    const backupTexto = JSON.stringify(backup, (key, value) => {
+      if (value && typeof value === 'object' && typeof value.seconds === 'number' && typeof value.nanoseconds === 'number') {
+        return new Date(value.seconds * 1000).toISOString();
+      }
+      return value;
+    }, 2);
+
+    const blob = new Blob([backupTexto], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'backup-portal-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    aviso.innerHTML = '<div class="aviso ok">Backup descargado correctamente.</div>';
+  } catch (err) {
+    aviso.innerHTML = '<div class="aviso error">Error al generar backup: ' + err.message + '</div>';
+  }
 }
 
 async function revisarMensajesNuevos() {
@@ -500,44 +549,68 @@ async function renderTabClientes(user) {
     snap.forEach(d => cacheClientes.push({ uid: d.id, ...d.data() }));
     cacheClientes.sort((a, b) => nombreCompleto(a).localeCompare(nombreCompleto(b), 'es', { sensitivity: 'base' }));
 
-    if (cacheClientes.length === 0) {
-      cont.innerHTML = '<p style="font-family:Arial;font-size:13px;color:#888;">Todavía no hay clientes registrados.</p>';
-      return;
-    }
+    cont.innerHTML = `
+      <input type="text" id="buscarCliente" placeholder="Buscar por nombre o DNI...">
+      <div id="listaClientes"></div>
+    `;
 
-    cont.innerHTML = cacheClientes.map(c => `
-      <div class="caja fila-cliente${c.tieneNuevo ? ' clienteNuevo' : ''}" data-uid="${c.uid}">
-        <h3>${nombreCompleto(c) || '(sin nombre)'}${c.tieneNuevo ? ' <span class="badgeNuevo">● Nuevo</span>' : ''}</h3>
-        <p>DNI: ${c.dni || '-'} · Tel: ${c.telefono || '-'}<br>${c.email || ''}</p>
-        <div class="detalleCliente oculto" style="margin-top:10px;"></div>
-      </div>
-    `).join('');
-
-    cont.querySelectorAll('.fila-cliente').forEach(el => {
-      el.addEventListener('click', async (e) => {
-        if (e.target.closest('.detalleCliente')) return;
-        const detalle = el.querySelector('.detalleCliente');
-        const yaAbierto = !detalle.classList.contains('oculto');
-        cont.querySelectorAll('.detalleCliente').forEach(d => d.classList.add('oculto'));
-        if (el.classList.contains('clienteNuevo')) {
-          el.classList.remove('clienteNuevo');
-          const badge = el.querySelector('.badgeNuevo');
-          if (badge) badge.remove();
-          const cLocal = cacheClientes.find(x => x.uid === el.dataset.uid);
-          if (cLocal) cLocal.tieneNuevo = false;
-          setDoc(doc(db, 'clientes', el.dataset.uid), { tieneNuevo: false }, { merge: true }).catch(() => {});
-          revisarMensajesNuevos();
-        }
-        if (yaAbierto) return;
-        detalle.classList.remove('oculto');
-        detalle.innerHTML = 'Cargando...';
-        await renderDetalleCliente(el.dataset.uid, detalle);
-      });
+    document.getElementById('buscarCliente').addEventListener('input', (e) => {
+      dibujarListaClientes(e.target.value);
     });
+
+    dibujarListaClientes('');
   } catch (err) {
     cont.innerHTML = '<div class="aviso error">Error al cargar clientes: ' + err.message + '</div>';
   }
 }
+
+function dibujarListaClientes(filtro) {
+  const listaCont = document.getElementById('listaClientes');
+  if (!listaCont) return;
+  const texto = filtro.trim().toLowerCase();
+  const lista = texto
+    ? cacheClientes.filter(c =>
+        nombreCompleto(c).toLowerCase().includes(texto) ||
+        (c.dni || '').toLowerCase().includes(texto)
+      )
+    : cacheClientes;
+
+  if (lista.length === 0) {
+    listaCont.innerHTML = '<p style="font-family:Arial;font-size:13px;color:#888;margin-top:12px;">No se encontraron clientes.</p>';
+    return;
+  }
+
+  listaCont.innerHTML = lista.map(c => `
+    <div class="caja fila-cliente${c.tieneNuevo ? ' clienteNuevo' : ''}" data-uid="${c.uid}">
+      <h3>${nombreCompleto(c) || '(sin nombre)'}${c.tieneNuevo ? ' <span class="badgeNuevo">● Nuevo</span>' : ''}</h3>
+      <p>DNI: ${c.dni || '-'} · Tel: ${c.telefono || '-'}<br>${c.email || ''}</p>
+      <div class="detalleCliente oculto" style="margin-top:10px;"></div>
+    </div>
+  `).join('');
+
+  listaCont.querySelectorAll('.fila-cliente').forEach(el => {
+    el.addEventListener('click', async (e) => {
+      if (e.target.closest('.detalleCliente')) return;
+      const detalle = el.querySelector('.detalleCliente');
+      const yaAbierto = !detalle.classList.contains('oculto');
+      listaCont.querySelectorAll('.detalleCliente').forEach(d => d.classList.add('oculto'));
+      if (el.classList.contains('clienteNuevo')) {
+        el.classList.remove('clienteNuevo');
+        const badge = el.querySelector('.badgeNuevo');
+        if (badge) badge.remove();
+        const cLocal = cacheClientes.find(x => x.uid === el.dataset.uid);
+        if (cLocal) cLocal.tieneNuevo = false;
+        setDoc(doc(db, 'clientes', el.dataset.uid), { tieneNuevo: false }, { merge: true }).catch(() => {});
+        revisarMensajesNuevos();
+      }
+      if (yaAbierto) return;
+      detalle.classList.remove('oculto');
+      detalle.innerHTML = 'Cargando...';
+      await renderDetalleCliente(el.dataset.uid, detalle);
+    });
+  });
+}
+
 
 async function renderDetalleCliente(uid, contenedor) {
   try {
@@ -797,6 +870,35 @@ async function revisarAlertasHoy() {
     const deHoy = eventos.filter(e => e.fecha === hoyStr);
     if (deHoy.length > 0) {
       box.innerHTML = `<div class="alertaHoy">⚠️ Tenés ${deHoy.length} evento${deHoy.length > 1 ? 's' : ''} agendado${deHoy.length > 1 ? 's' : ''} para hoy: ${deHoy.map(e => e.titulo).join(', ')}</div>`;
+    }
+  } catch (err) {
+    box.innerHTML = '';
+  }
+}
+
+async function revisarProximosVencimientos() {
+  const box = document.getElementById('alertaProximosBox');
+  if (!box) return;
+  try {
+    const eventos = await obtenerTodosLosEventos();
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const hoyStr = hoy.toISOString().slice(0, 10);
+    const limite = new Date(hoy);
+    limite.setDate(limite.getDate() + 3);
+
+    const proximos = eventos
+      .filter(e => e.fecha > hoyStr && new Date(e.fecha + 'T00:00:00') <= limite)
+      .sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+    if (proximos.length > 0) {
+      const items = proximos.map(e => {
+        const dias = Math.round((new Date(e.fecha + 'T00:00:00') - hoy) / 86400000);
+        return `${e.titulo} (en ${dias} día${dias > 1 ? 's' : ''})`;
+      }).join(', ');
+      box.innerHTML = `<div class="alertaHoy" style="background:#FFF4E0;color:#8a5a00;">⏳ Próximos vencimientos: ${items}</div>`;
+    } else {
+      box.innerHTML = '';
     }
   } catch (err) {
     box.innerHTML = '';
