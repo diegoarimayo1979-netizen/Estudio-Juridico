@@ -548,6 +548,12 @@ const PROVINCIAS_LOCALIDADES = {
   "Tucumán": ["San Miguel de Tucumán","Yerba Buena","Tafí Viejo","Concepción","Banda del Río Salí","Aguilares","Monteros","Tafí del Valle"]
 };
 const OPCION_OTRA_LOCALIDAD = "Otra (especificar)";
+const NACIONALIDADES = [
+  "Argentina", "Boliviana", "Brasileña", "Chilena", "Colombiana", "Ecuatoriana",
+  "Paraguaya", "Peruana", "Uruguaya", "Venezolana", "Española", "Italiana",
+  "Alemana", "Francesa", "Portuguesa", "Estadounidense", "Mexicana", "China",
+  "Coreana", "Japonesa", "Rusa", "Ucraniana"
+];
 
 function formatearFecha(fechaStr) {
   if (!fechaStr) return '';
@@ -572,7 +578,12 @@ function pantallaFormulario(user) {
     <label>Fecha de nacimiento</label>
     <input type="date" id="fFechaNacimiento">
     <label>Nacionalidad</label>
-    <input type="text" id="fNacionalidad" placeholder="Argentina">
+    <select id="fNacionalidad">
+      <option value="">Elegí una opción...</option>
+      ${NACIONALIDADES.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}
+      <option value="${esc(OPCION_OTRA_LOCALIDAD)}">${esc(OPCION_OTRA_LOCALIDAD)}</option>
+    </select>
+    <input type="text" id="fNacionalidadOtra" placeholder="Escribí tu nacionalidad" class="oculto" style="margin-top:8px;">
     <label>DNI</label>
     <input type="text" id="fDni">
     <label>CUIT/CUIL</label>
@@ -652,11 +663,23 @@ function pantallaFormulario(user) {
     }
   });
 
+  document.getElementById('fNacionalidad').addEventListener('change', (e) => {
+    const inputOtra = document.getElementById('fNacionalidadOtra');
+    if (e.target.value === OPCION_OTRA_LOCALIDAD) {
+      inputOtra.classList.remove('oculto');
+    } else {
+      inputOtra.classList.add('oculto');
+      inputOtra.value = '';
+    }
+  });
+
   document.getElementById('btnGuardar').onclick = async () => {
     const apellido = document.getElementById('fApellido').value.trim();
     const nombre = document.getElementById('fNombre').value.trim();
     const fechaNacimiento = document.getElementById('fFechaNacimiento').value;
-    const nacionalidad = document.getElementById('fNacionalidad').value.trim();
+    const nacionalidadSelect = document.getElementById('fNacionalidad').value;
+    const nacionalidadOtra = document.getElementById('fNacionalidadOtra').value.trim();
+    const nacionalidad = nacionalidadSelect === OPCION_OTRA_LOCALIDAD ? nacionalidadOtra : nacionalidadSelect;
     const dni = document.getElementById('fDni').value.trim();
     const cuit = document.getElementById('fCuit').value.trim();
     const estadoCivil = document.getElementById('fEstadoCivil').value;
