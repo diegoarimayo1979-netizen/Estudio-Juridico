@@ -157,6 +157,13 @@ const cuerpo = document.getElementById('cuerpo');
 const contenedorPrincipal = document.getElementById('contenedorPrincipal');
 const ADMIN_EMAIL = 'diegoarimayo1979@gmail.com';
 
+// ---------- SEGURIDAD: neutraliza cualquier código HTML en texto de usuarios ----------
+function esc(valor) {
+  return String(valor ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
 // ---------- NOTIFICACIONES PUSH (solo para el administrador) ----------
 async function activarNotificaciones(uid) {
   const cajaEstado = document.getElementById('estadoNotif');
@@ -313,9 +320,9 @@ async function pantallaDashboard(user, datos) {
   contenedorPrincipal.classList.remove('ancho');
   cuerpo.innerHTML = `
     <div class="dato-cliente">
-      <strong>${nombreCompleto(datos)}</strong><br>
-      DNI: ${datos.dni} · Tel: ${datos.telefono || '-'}<br>
-      ${user.email}
+      <strong>${esc(nombreCompleto(datos))}</strong><br>
+      DNI: ${esc(datos.dni)} · Tel: ${esc(datos.telefono) || '-'}<br>
+      ${esc(user.email)}
     </div>
 
     <div class="caja">
@@ -393,7 +400,7 @@ async function cargarMensajesAbogado(uid) {
     snap.forEach(d => {
       const m = d.data();
       const fecha = m.fecha ? new Date(m.fecha.seconds * 1000).toLocaleString('es-AR') : '';
-      html += `<div class="lista-item mensajeAbogado">💬 ${m.texto || ''}${m.archivoUrl ? '<br>📎 <a href="' + m.archivoUrl + '" target="_blank">' + m.archivoNombre + '</a>' : ''}<small>${fecha}</small></div>`;
+      html += `<div class="lista-item mensajeAbogado">💬 ${esc(m.texto || '')}${m.archivoUrl ? '<br>📎 <a href="' + m.archivoUrl + '" target="_blank">' + esc(m.archivoNombre) + '</a>' : ''}<small>${fecha}</small></div>`;
     });
     cont.innerHTML = html;
   } catch (err) {
@@ -421,9 +428,9 @@ async function cargarHistorial(uid) {
     cont.innerHTML = items.map(it => {
       const fecha = it.fecha ? new Date(it.fecha.seconds * 1000).toLocaleString('es-AR') : '';
       if (it.tipo === 'Archivo') {
-        return `<div class="lista-item">📎 <a href="${it.url}" target="_blank">${it.nombre}</a><small>${fecha}</small></div>`;
+        return `<div class="lista-item">📎 <a href="${it.url}" target="_blank">${esc(it.nombre)}</a><small>${fecha}</small></div>`;
       }
-      return `<div class="lista-item">💬 ${it.texto}<small>${fecha}</small></div>`;
+      return `<div class="lista-item">💬 ${esc(it.texto)}<small>${fecha}</small></div>`;
     }).join('');
   } catch (err) {
     cont.innerHTML = '<p style="font-size:13px;color:#b32424;font-family:Arial;">Error al cargar: ' + err.message + '</p>';
@@ -437,7 +444,7 @@ async function pantallaAdmin(user, tabInicial = 'clientes') {
   contenedorPrincipal.classList.add('ancho');
   cuerpo.innerHTML = `
     <h2>Panel de Administrador</h2>
-    <p style="font-family:Arial;font-size:13px;color:#888;margin-bottom:10px;">Conectado como ${user.email}</p>
+    <p style="font-family:Arial;font-size:13px;color:#888;margin-bottom:10px;">Conectado como ${esc(user.email)}</p>
     <div id="alertaHoyBox"></div>
     <div id="alertaProximosBox"></div>
     <div id="alertaMensajesBox"></div>
@@ -516,7 +523,7 @@ async function revisarMensajesNuevos() {
       ? cacheClientes.filter(c => c.tieneNuevo)
       : (await getDocs(collection(db, 'clientes'))).docs.map(d => ({ uid: d.id, ...d.data() })).filter(c => c.tieneNuevo);
     if (nuevos.length > 0) {
-      const nombres = nuevos.map(c => nombreCompleto(c) || '(sin nombre)').join(', ');
+      const nombres = nuevos.map(c => esc(nombreCompleto(c)) || '(sin nombre)').join(', ');
       box.innerHTML = `<div class="alertaHoy" style="background:#E3F1FA;color:#0F5C8A;">📩 Tenés mensajes nuevos de: ${nombres}</div>`;
     } else {
       box.innerHTML = '';
@@ -582,8 +589,8 @@ function dibujarListaClientes(filtro) {
 
   listaCont.innerHTML = lista.map(c => `
     <div class="caja fila-cliente${c.tieneNuevo ? ' clienteNuevo' : ''}" data-uid="${c.uid}">
-      <h3>${nombreCompleto(c) || '(sin nombre)'}${c.tieneNuevo ? ' <span class="badgeNuevo">● Nuevo</span>' : ''}</h3>
-      <p>DNI: ${c.dni || '-'} · Tel: ${c.telefono || '-'}<br>${c.email || ''}</p>
+      <h3>${esc(nombreCompleto(c)) || '(sin nombre)'}${c.tieneNuevo ? ' <span class="badgeNuevo">● Nuevo</span>' : ''}</h3>
+      <p>DNI: ${esc(c.dni) || '-'} · Tel: ${esc(c.telefono) || '-'}<br>${esc(c.email) || ''}</p>
       <div class="detalleCliente oculto" style="margin-top:10px;"></div>
     </div>
   `).join('');
@@ -631,16 +638,16 @@ async function renderDetalleCliente(uid, contenedor) {
           const coleccion = it.tipo === 'Archivo' ? 'archivos' : 'novedades';
           const botonBorrar = `<span class="btnBorrarItem" data-uid="${uid}" data-coleccion="${coleccion}" data-id="${it.id}" style="float:right;cursor:pointer;color:#b32424;">🗑️</span>`;
           if (it.tipo === 'Archivo') {
-            return `<div class="lista-item">📎 <a href="${it.url}" target="_blank">${it.nombre}</a>${botonBorrar}<small>${fecha}</small></div>`;
+            return `<div class="lista-item">📎 <a href="${it.url}" target="_blank">${esc(it.nombre)}</a>${botonBorrar}<small>${fecha}</small></div>`;
           }
-          return `<div class="lista-item">💬 ${it.texto}${botonBorrar}<small>${fecha}</small></div>`;
+          return `<div class="lista-item">💬 ${esc(it.texto)}${botonBorrar}<small>${fecha}</small></div>`;
         }).join('');
 
     let htmlMsgs = '';
     msgSnap.forEach(d => {
       const m = d.data();
       const fecha = m.fecha ? new Date(m.fecha.seconds * 1000).toLocaleString('es-AR') : '';
-      htmlMsgs += `<div class="lista-item mensajeAbogado">💬 ${m.texto || ''}${m.archivoUrl ? '<br>📎 <a href="' + m.archivoUrl + '" target="_blank">' + m.archivoNombre + '</a>' : ''}<small>${fecha}</small></div>`;
+      htmlMsgs += `<div class="lista-item mensajeAbogado">💬 ${esc(m.texto || '')}${m.archivoUrl ? '<br>📎 <a href="' + m.archivoUrl + '" target="_blank">' + esc(m.archivoNombre) + '</a>' : ''}<small>${fecha}</small></div>`;
     });
 
     contenedor.innerHTML = `
@@ -750,7 +757,7 @@ async function renderTabAgenda(user) {
       <label>Cliente relacionado (opcional)</label>
       <select id="agCliente">
         <option value="">Sin cliente asociado</option>
-        ${cacheClientes.map(c => `<option value="${c.uid}">${nombreCompleto(c)}</option>`).join('')}
+        ${cacheClientes.map(c => `<option value="${c.uid}">${esc(nombreCompleto(c))}</option>`).join('')}
       </select>
       <label>Nota</label>
       <textarea id="agNota" placeholder="Detalles adicionales..."></textarea>
@@ -870,7 +877,7 @@ async function cargarListaEventos() {
         if (link) botonWa = ` <a href="${link}" target="_blank" style="color:#1ea952;text-decoration:none;">📲 WhatsApp</a>`;
       }
       const botonBorrar = ` <span class="btnBorrarEvento" data-id="${e.id}" style="float:right;cursor:pointer;color:#b32424;">🗑️</span>`;
-      return `<div class="lista-item">${botonBorrar}📅 <strong>${d}/${m}/${y}</strong> — ${e.titulo}${e.clienteNombre ? ' (' + e.clienteNombre + ')' : ''}${botonWa}${e.nota ? '<br><span style="color:#666;">' + e.nota + '</span>' : ''}</div>`;
+      return `<div class="lista-item">${botonBorrar}📅 <strong>${d}/${m}/${y}</strong> — ${esc(e.titulo)}${e.clienteNombre ? ' (' + esc(e.clienteNombre) + ')' : ''}${botonWa}${e.nota ? '<br><span style="color:#666;">' + esc(e.nota) + '</span>' : ''}</div>`;
     }).join('');
 
     cont.querySelectorAll('.btnBorrarEvento').forEach(el => {
@@ -899,7 +906,7 @@ async function revisarAlertasHoy() {
     const hoyStr = new Date().toISOString().slice(0, 10);
     const deHoy = eventos.filter(e => e.fecha === hoyStr);
     if (deHoy.length > 0) {
-      box.innerHTML = `<div class="alertaHoy">⚠️ Tenés ${deHoy.length} evento${deHoy.length > 1 ? 's' : ''} agendado${deHoy.length > 1 ? 's' : ''} para hoy: ${deHoy.map(e => e.titulo).join(', ')}</div>`;
+      box.innerHTML = `<div class="alertaHoy">⚠️ Tenés ${deHoy.length} evento${deHoy.length > 1 ? 's' : ''} agendado${deHoy.length > 1 ? 's' : ''} para hoy: ${deHoy.map(e => esc(e.titulo)).join(', ')}</div>`;
     }
   } catch (err) {
     box.innerHTML = '';
@@ -924,7 +931,7 @@ async function revisarProximosVencimientos() {
     if (proximos.length > 0) {
       const items = proximos.map(e => {
         const dias = Math.round((new Date(e.fecha + 'T00:00:00') - hoy) / 86400000);
-        return `${e.titulo} (en ${dias} día${dias > 1 ? 's' : ''})`;
+        return `${esc(e.titulo)} (en ${dias} día${dias > 1 ? 's' : ''})`;
       }).join(', ');
       box.innerHTML = `<div class="alertaHoy" style="background:#FFF4E0;color:#8a5a00;">⏳ Próximos vencimientos: ${items}</div>`;
     } else {
