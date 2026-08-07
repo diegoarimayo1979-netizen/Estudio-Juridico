@@ -393,7 +393,7 @@ function pantallaLogin(modoRegistro = false) {
     const dominioSelect = document.getElementById('inEmailDominio').value;
     const dominioOtro = document.getElementById('inEmailDominioOtro').value.trim();
     const dominio = dominioSelect === 'otro' ? dominioOtro : dominioSelect;
-    const email = usuario && dominio ? `${usuario}@${dominio}` : '';
+    const email = usuario.includes('@') ? usuario : (usuario && dominio ? `${usuario}@${dominio}` : '');
     const pass = document.getElementById('inPass').value;
     const aviso = document.getElementById('avisoLogin');
     if (!email || !pass) {
