@@ -762,6 +762,16 @@ async function pantallaDashboard(user, datos) {
     </div>
 
     <div class="caja">
+      <h3>Presupuestos / Honorarios</h3>
+      <div id="listaPresupuestosCliente" style="margin-top:8px;">Cargando...</div>
+    </div>
+
+    <div class="caja">
+      <h3>Autorizaciones</h3>
+      <div id="listaAutorizacionesCliente" style="margin-top:8px;">Cargando...</div>
+    </div>
+
+    <div class="caja">
       <h3>Escribir una novedad o enviar un documento</h3>
       <textarea id="txtNovedad" placeholder="Este es un espacio confidencial para tu consulta. Contanos tu situación y un profesional del estudio va a responderte a la brevedad. (Opcional si adjuntás un archivo)"></textarea>
       <label>Adjuntar archivo (opcional)</label>
@@ -818,6 +828,114 @@ async function pantallaDashboard(user, datos) {
 
   cargarHistorial(user.uid);
   cargarMensajesAbogado(user.uid);
+  cargarPresupuestosCliente(user.uid);
+  cargarAutorizacionesCliente(user.uid);
+}
+
+function formatearMonto(monto) {
+  const numero = Number(monto);
+  if (isNaN(numero)) return monto;
+  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(numero);
+}
+
+async function cargarPresupuestosCliente(uid) {
+  const cont = document.getElementById('listaPresupuestosCliente');
+  if (!cont) return;
+  try {
+    const snap = await getDocs(query(collection(db, 'clientes', uid, 'presupuestos'), orderBy('fecha', 'desc')));
+    if (snap.empty) {
+      cont.innerHTML = '<p style="font-size:13px;color:#888;font-family:Arial;">Todavía no tenés presupuestos.</p>';
+      return;
+    }
+    cont.innerHTML = snap.docs.map(d => {
+      const p = d.data();
+      const fecha = p.fecha ? new Date(p.fecha.seconds * 1000).toLocaleDateString('es-AR') : '';
+      let estadoTexto = '⏳ Pendiente de tu respuesta';
+      let botones = `
+        <button class="chica btnAceptarPresupuesto" data-id="${d.id}" style="width:auto;background:#1e7a34;">Aceptar</button>
+        <button class="chica btnRechazarPresupuesto" data-id="${d.id}" style="width:auto;background:#b32424;margin-left:8px;">Rechazar</button>
+      `;
+      if (p.estado === 'aceptado') { estadoTexto = '✅ Aceptado'; botones = ''; }
+      if (p.estado === 'rechazado') { estadoTexto = '❌ Rechazado'; botones = ''; }
+      return `<div class="lista-item">
+        <strong>${esc(formatearMonto(p.monto))}</strong> — ${esc(p.descripcion)}<br>
+        <small>${fecha} · ${estadoTexto}</small>
+        ${botones ? '<div style="margin-top:8px;">' + botones + '</div>' : ''}
+      </div>`;
+    }).join('');
+
+    cont.querySelectorAll('.btnAceptarPresupuesto, .btnRechazarPresupuesto').forEach(btn => {
+      btn.onclick = async () => {
+        const nuevoEstado = btn.classList.contains('btnAceptarPresupuesto') ? 'aceptado' : 'rechazado';
+        try {
+          await setDoc(doc(db, 'clientes', uid, 'presupuestos', btn.dataset.id), {
+            estado: nuevoEstado, fechaRespuesta: serverTimestamp()
+          }, { merge: true });
+          cargarPresupuestosCliente(uid);
+        } catch (err) {
+          alert('Error: ' + err.message);
+        }
+      };
+    });
+  } catch (err) {
+    cont.innerHTML = '<p style="font-size:13px;color:#b32424;font-family:Arial;">Error: ' + err.message + '</p>';
+  }
+}
+
+async function cargarAutorizacionesCliente(uid) {
+  const cont = document.getElementById('listaAutorizacionesCliente');
+  if (!cont) return;
+  try {
+    const snap = await getDocs(query(collection(db, 'clientes', uid, 'autorizaciones'), orderBy('fecha', 'desc')));
+    if (snap.empty) {
+      cont.innerHTML = '<p style="font-size:13px;color:#888;font-family:Arial;">Todavía no tenés autorizaciones para firmar.</p>';
+      return;
+    }
+    cont.innerHTML = snap.docs.map(d => {
+      const a = d.data();
+      const fecha = a.fecha ? new Date(a.fecha.seconds * 1000).toLocaleDateString('es-AR') : '';
+      if (a.estado === 'firmado') {
+        const fechaFirma = a.fechaFirma ? new Date(a.fechaFirma.seconds * 1000).toLocaleString('es-AR') : '';
+        return `<div class="lista-item">
+          <strong>${esc(a.titulo)}</strong><br>
+          <span style="white-space:pre-wrap;">${esc(a.texto)}</span><br>
+          ${a.autorizadoNombre ? '<small>Autorizado: ' + esc(a.autorizadoNombre) + (a.autorizadoDni ? ' - DNI ' + esc(a.autorizadoDni) : '') + '</small><br>' : ''}
+          <small>✅ Firmado el ${fechaFirma}</small>
+        </div>`;
+      }
+      return `<div class="lista-item">
+        <strong>${esc(a.titulo)}</strong><br>
+        <span style="white-space:pre-wrap;">${esc(a.texto)}</span>
+        <div style="margin-top:8px;">
+          <label>Nombre de la persona autorizada (si corresponde)</label>
+          <input type="text" class="inputAutNombre" data-id="${d.id}">
+          <label>DNI de la persona autorizada (si corresponde)</label>
+          <input type="text" class="inputAutDni" data-id="${d.id}">
+          <button class="chica btnFirmarAutorizacion" data-id="${d.id}" style="width:auto;">Confirmar y firmar electrónicamente</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    cont.querySelectorAll('.btnFirmarAutorizacion').forEach(btn => {
+      btn.onclick = async () => {
+        const id = btn.dataset.id;
+        const autorizadoNombre = cont.querySelector(`.inputAutNombre[data-id="${id}"]`).value.trim();
+        const autorizadoDni = cont.querySelector(`.inputAutDni[data-id="${id}"]`).value.trim();
+        const ok = confirm('¿Confirmás la firma electrónica de esta autorización? Esta acción queda registrada con fecha y hora.');
+        if (!ok) return;
+        try {
+          await setDoc(doc(db, 'clientes', uid, 'autorizaciones', id), {
+            estado: 'firmado', autorizadoNombre, autorizadoDni, fechaFirma: serverTimestamp()
+          }, { merge: true });
+          cargarAutorizacionesCliente(uid);
+        } catch (err) {
+          alert('Error: ' + err.message);
+        }
+      };
+    });
+  } catch (err) {
+    cont.innerHTML = '<p style="font-size:13px;color:#b32424;font-family:Arial;">Error: ' + err.message + '</p>';
+  }
 }
 
 async function cargarMensajesAbogado(uid) {
@@ -1076,10 +1194,12 @@ async function renderDetalleCliente(uid, contenedor) {
         `</div>`
       : '';
 
-    const [novSnap, arcSnap, msgSnap] = await Promise.all([
+    const [novSnap, arcSnap, msgSnap, presSnap, autSnap] = await Promise.all([
       getDocs(query(collection(db, 'clientes', uid, 'novedades'), orderBy('fecha', 'desc'))),
       getDocs(query(collection(db, 'clientes', uid, 'archivos'), orderBy('fecha', 'desc'))),
-      getDocs(query(collection(db, 'clientes', uid, 'mensajes'), orderBy('fecha', 'desc')))
+      getDocs(query(collection(db, 'clientes', uid, 'mensajes'), orderBy('fecha', 'desc'))),
+      getDocs(query(collection(db, 'clientes', uid, 'presupuestos'), orderBy('fecha', 'desc'))),
+      getDocs(query(collection(db, 'clientes', uid, 'autorizaciones'), orderBy('fecha', 'desc')))
     ]);
     let items = [];
     novSnap.forEach(d => items.push({ tipo: 'Nota', id: d.id, ...d.data() }));
@@ -1105,6 +1225,24 @@ async function renderDetalleCliente(uid, contenedor) {
       htmlMsgs += `<div class="lista-item mensajeAbogado">💬 ${esc(m.texto || '')}${m.archivoUrl ? '<br>📎 <a href="' + m.archivoUrl + '" target="_blank">' + esc(m.archivoNombre) + '</a>' : ''}<small>${fecha}</small></div>`;
     });
 
+    let htmlPresupuestos = '';
+    presSnap.forEach(d => {
+      const p = d.data();
+      const fecha = p.fecha ? new Date(p.fecha.seconds * 1000).toLocaleDateString('es-AR') : '';
+      const estados = { pendiente: '⏳ Pendiente', aceptado: '✅ Aceptado', rechazado: '❌ Rechazado' };
+      const botonBorrar = `<span class="btnBorrarItem" data-uid="${uid}" data-coleccion="presupuestos" data-id="${d.id}" style="float:right;cursor:pointer;color:#b32424;">🗑️</span>`;
+      htmlPresupuestos += `<div class="lista-item"><strong>${esc(formatearMonto(p.monto))}</strong> — ${esc(p.descripcion)}${botonBorrar}<small>${fecha} · ${estados[p.estado] || p.estado}</small></div>`;
+    });
+
+    let htmlAutorizaciones = '';
+    autSnap.forEach(d => {
+      const a = d.data();
+      const fecha = a.fecha ? new Date(a.fecha.seconds * 1000).toLocaleDateString('es-AR') : '';
+      const estado = a.estado === 'firmado' ? '✅ Firmado' : '⏳ Pendiente de firma';
+      const botonBorrar = `<span class="btnBorrarItem" data-uid="${uid}" data-coleccion="autorizaciones" data-id="${d.id}" style="float:right;cursor:pointer;color:#b32424;">🗑️</span>`;
+      htmlAutorizaciones += `<div class="lista-item"><strong>${esc(a.titulo)}</strong>${botonBorrar}<small>${fecha} · ${estado}</small></div>`;
+    });
+
     contenedor.innerHTML = `
       ${htmlDatos}
       <h3 style="margin-bottom:6px;">Historial</h3>
@@ -1117,6 +1255,25 @@ async function renderDetalleCliente(uid, contenedor) {
       <input type="file" class="archivoMsgAdmin">
       <button class="chica btnEnviarMsgAdmin" data-uid="${uid}">Enviar mensaje</button>
       <div class="avisoMsgAdmin"></div>
+
+      <h3 style="margin-top:20px;margin-bottom:6px;">Presupuestos / Honorarios</h3>
+      <div>${htmlPresupuestos || '<p style="font-size:13px;color:#888;font-family:Arial;">Todavía no le enviaste presupuestos.</p>'}</div>
+      <label style="margin-top:10px;">Descripción</label>
+      <textarea class="txtPresupuestoDesc" placeholder="Ej: Honorarios por representación en demanda laboral"></textarea>
+      <label>Monto ($)</label>
+      <input type="number" class="inputPresupuestoMonto" min="0" step="0.01">
+      <button class="chica btnEnviarPresupuesto" data-uid="${uid}">Enviar presupuesto</button>
+      <div class="avisoPresupuesto"></div>
+
+      <h3 style="margin-top:20px;margin-bottom:6px;">Autorizaciones</h3>
+      <div>${htmlAutorizaciones || '<p style="font-size:13px;color:#888;font-family:Arial;">Todavía no le enviaste autorizaciones.</p>'}</div>
+      <label style="margin-top:10px;">Título</label>
+      <input type="text" class="inputAutorizacionTitulo" placeholder="Ej: Autorización para retirar documentación">
+      <label>Texto de la autorización</label>
+      <textarea class="txtAutorizacionTexto" placeholder="Escribí el texto completo. El cliente va a poder completar el nombre y DNI de la persona autorizada (si corresponde) antes de confirmar."></textarea>
+      <button class="chica btnEnviarAutorizacion" data-uid="${uid}">Enviar autorización</button>
+      <div class="avisoAutorizacion"></div>
+
       <button class="chica btnEliminarCliente" data-uid="${uid}" style="background:#b32424;color:#fff;margin-top:20px;">🗑️ Eliminar cliente</button>
       <div class="avisoEliminarCliente"></div>
     `;
@@ -1188,6 +1345,46 @@ async function renderDetalleCliente(uid, contenedor) {
         aviso.innerHTML = '<div class="aviso ok">Mensaje enviado.</div>';
         contenedor.querySelector('.txtMsgAdmin').value = '';
         inputArchivo.value = '';
+        renderDetalleCliente(uid, contenedor);
+      } catch (err) {
+        aviso.innerHTML = '<div class="aviso error">Error: ' + err.message + '</div>';
+      }
+    });
+
+    contenedor.querySelector('.btnEnviarPresupuesto').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const btn = e.target;
+      const descripcion = contenedor.querySelector('.txtPresupuestoDesc').value.trim();
+      const monto = contenedor.querySelector('.inputPresupuestoMonto').value;
+      const aviso = contenedor.querySelector('.avisoPresupuesto');
+      if (!descripcion || !monto) { aviso.innerHTML = '<div class="aviso error">Completá la descripción y el monto.</div>'; return; }
+      aviso.innerHTML = '<div class="aviso ok">Enviando...</div>';
+      try {
+        await addDoc(collection(db, 'clientes', btn.dataset.uid, 'presupuestos'), {
+          descripcion, monto: Number(monto), estado: 'pendiente', fecha: serverTimestamp()
+        });
+        await setDoc(doc(db, 'clientes', btn.dataset.uid), { tieneNuevo: true }, { merge: true });
+        aviso.innerHTML = '<div class="aviso ok">Presupuesto enviado.</div>';
+        renderDetalleCliente(uid, contenedor);
+      } catch (err) {
+        aviso.innerHTML = '<div class="aviso error">Error: ' + err.message + '</div>';
+      }
+    });
+
+    contenedor.querySelector('.btnEnviarAutorizacion').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const btn = e.target;
+      const titulo = contenedor.querySelector('.inputAutorizacionTitulo').value.trim();
+      const texto = contenedor.querySelector('.txtAutorizacionTexto').value.trim();
+      const aviso = contenedor.querySelector('.avisoAutorizacion');
+      if (!titulo || !texto) { aviso.innerHTML = '<div class="aviso error">Completá el título y el texto.</div>'; return; }
+      aviso.innerHTML = '<div class="aviso ok">Enviando...</div>';
+      try {
+        await addDoc(collection(db, 'clientes', btn.dataset.uid, 'autorizaciones'), {
+          titulo, texto, estado: 'pendiente', fecha: serverTimestamp()
+        });
+        await setDoc(doc(db, 'clientes', btn.dataset.uid), { tieneNuevo: true }, { merge: true });
+        aviso.innerHTML = '<div class="aviso ok">Autorización enviada.</div>';
         renderDetalleCliente(uid, contenedor);
       } catch (err) {
         aviso.innerHTML = '<div class="aviso error">Error: ' + err.message + '</div>';
