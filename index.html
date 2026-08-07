@@ -157,6 +157,46 @@ const cuerpo = document.getElementById('cuerpo');
 const contenedorPrincipal = document.getElementById('contenedorPrincipal');
 const ADMIN_EMAIL = 'diegoarimayo1979@gmail.com';
 
+// ---------- INSTALACIÓN DE LA APP (PWA) ----------
+let deferredInstallPrompt = null;
+const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const yaInstalada = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const cajaInstalar = document.getElementById('cajaInstalarApp');
+  if (cajaInstalar) cajaInstalar.classList.remove('oculto');
+});
+
+function htmlCajaInstalar() {
+  if (yaInstalada) return '';
+  if (esIOS) {
+    return `
+      <div class="caja" id="cajaInstalarApp" style="background:#F5F0E1;text-align:center;">
+        <p style="font-family:Arial;font-size:13px;">📲 Para instalar esta app en tu iPhone: tocá el ícono de compartir <strong>⬆️</strong> y elegí <strong>"Agregar a inicio"</strong>.</p>
+      </div>
+    `;
+  }
+  return `
+    <div class="caja oculto" id="cajaInstalarApp" style="text-align:center;">
+      <button id="btnInstalarApp" style="margin-top:0;">📲 Instalar esta app en tu celular</button>
+    </div>
+  `;
+}
+
+function wireCajaInstalar() {
+  const btn = document.getElementById('btnInstalarApp');
+  if (!btn) return;
+  btn.onclick = async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    document.getElementById('cajaInstalarApp')?.classList.add('oculto');
+  };
+}
+
 // ---------- SEGURIDAD: neutraliza cualquier código HTML en texto de usuarios ----------
 function esc(valor) {
   return String(valor ?? '').replace(/[&<>"']/g, (c) => ({
@@ -323,8 +363,10 @@ function pantallaLogin(modoRegistro = false) {
       ${modoRegistro ? '¿Ya tenés cuenta? Iniciar sesión' : '¿Primera vez? Crear una cuenta'}
     </div>
     <div id="avisoLogin"></div>
+    ${htmlCajaInstalar()}
   `;
 
+  wireCajaInstalar();
   document.getElementById('btnCambiar').onclick = () => pantallaLogin(!modoRegistro);
 
   document.getElementById('btnAccion').onclick = async () => {
