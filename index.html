@@ -403,20 +403,69 @@ function traducirError(code) {
 }
 
 // ---------- PANTALLA: FORMULARIO DE REGISTRO DE DATOS (cliente) ----------
+// ---------- PROVINCIAS Y LOCALIDADES DE ARGENTINA ----------
+const PROVINCIAS_LOCALIDADES = {
+  "Ciudad Autónoma de Buenos Aires": ["Palermo","Recoleta","Belgrano","Caballito","Flores","Almagro","Villa Urquiza","Villa Devoto","Núñez","Colegiales","Boedo","San Telmo","Monserrat","Puerto Madero","Retiro","Barracas","La Boca","Constitución","Balvanera","Once","Villa Crespo","Chacarita","Saavedra","Villa del Parque","Mataderos","Liniers","Parque Patricios","Floresta","Villa Lugano","Villa Soldati"],
+  "Buenos Aires": ["La Plata","Quilmes","Avellaneda","Lanús","Lomas de Zamora","Almirante Brown","Berazategui","Florencio Varela","San Isidro","Vicente López","San Fernando","Tigre","San Miguel","Malvinas Argentinas","José C. Paz","Moreno","Merlo","Morón","Ituzaingó","Hurlingham","Tres de Febrero","La Matanza","Ezeiza","Esteban Echeverría","Presidente Perón","San Vicente","Cañuelas","Marcos Paz","Mar del Plata","Bahía Blanca","Tandil","Olavarría","Pergamino","Junín","Zárate","Campana","Luján","Chivilcoy","Necochea","San Nicolás","Azul"],
+  "Catamarca": ["San Fernando del Valle de Catamarca","Andalgalá","Belén","Santa María","Tinogasta","Recreo","Fray Mamerto Esquiú","Valle Viejo"],
+  "Chaco": ["Resistencia","Presidencia Roque Sáenz Peña","Villa Ángela","Charata","General San Martín","Machagai","Quitilipi","Barranqueras","Fontana"],
+  "Chubut": ["Rawson","Comodoro Rivadavia","Trelew","Puerto Madryn","Esquel","Gaiman","Trevelin","Rada Tilly","Sarmiento"],
+  "Córdoba": ["Córdoba","Río Cuarto","Villa María","San Francisco","Alta Gracia","Villa Carlos Paz","Bell Ville","Jesús María","Cosquín","Río Tercero","La Falda","Marcos Juárez","Cruz del Eje","Deán Funes","Villa Dolores"],
+  "Corrientes": ["Corrientes","Goya","Mercedes","Paso de los Libres","Curuzú Cuatiá","Santo Tomé","Ituzaingó","Bella Vista","Monte Caseros","Esquina"],
+  "Entre Ríos": ["Paraná","Concordia","Gualeguaychú","Concepción del Uruguay","Gualeguay","Villaguay","Victoria","Chajarí","Colón","Federación"],
+  "Formosa": ["Formosa","Clorinda","Pirané","El Colorado","Ingeniero Juárez","Las Lomitas"],
+  "Jujuy": ["San Salvador de Jujuy","Palpalá","Perico","Libertador General San Martín","San Pedro de Jujuy","Humahuaca","Tilcara","La Quiaca"],
+  "La Pampa": ["Santa Rosa","General Pico","Toay","Realicó","General Acha","Eduardo Castex"],
+  "La Rioja": ["La Rioja","Chilecito","Aimogasta","Chamical","Chepes"],
+  "Mendoza": ["Mendoza","San Rafael","Godoy Cruz","Guaymallén","Las Heras","Maipú","Luján de Cuyo","Rivadavia","San Martín","Tunuyán","General Alvear","Malargüe"],
+  "Misiones": ["Posadas","Oberá","Eldorado","Puerto Iguazú","Apóstoles","Leandro N. Alem","San Vicente","Montecarlo"],
+  "Neuquén": ["Neuquén","Plottier","Cutral Có","Zapala","San Martín de los Andes","Villa La Angostura","Centenario","Plaza Huincul","Chos Malal"],
+  "Río Negro": ["Viedma","San Carlos de Bariloche","General Roca","Cipolletti","Villa Regina","El Bolsón","Choele Choel","Cinco Saltos"],
+  "Salta": ["Salta","Orán","Tartagal","General Güemes","Cafayate","Metán","Rosario de la Frontera","Embarcación"],
+  "San Juan": ["San Juan","Rawson","Chimbas","Rivadavia","Santa Lucía","Pocito","Caucete","Jáchal"],
+  "San Luis": ["San Luis","Villa Mercedes","Merlo","Justo Daract","La Toma"],
+  "Santa Cruz": ["Río Gallegos","Caleta Olivia","El Calafate","Puerto Deseado","Pico Truncado","Perito Moreno","Las Heras"],
+  "Santa Fe": ["Santa Fe","Rosario","Rafaela","Venado Tuerto","Reconquista","Villa Constitución","Casilda","San Lorenzo","Esperanza","Santo Tomé","Firmat","Cañada de Gómez"],
+  "Santiago del Estero": ["Santiago del Estero","La Banda","Termas de Río Hondo","Añatuya","Frías","Fernández"],
+  "Tierra del Fuego": ["Ushuaia","Río Grande","Tolhuin"],
+  "Tucumán": ["San Miguel de Tucumán","Yerba Buena","Tafí Viejo","Concepción","Banda del Río Salí","Aguilares","Monteros","Tafí del Valle"]
+};
+const OPCION_OTRA_LOCALIDAD = "Otra (especificar)";
+
+function formatearFecha(fechaStr) {
+  if (!fechaStr) return '';
+  const [y, m, d] = fechaStr.split('-');
+  if (!y || !m || !d) return fechaStr;
+  return `${d}/${m}/${y}`;
+}
+
 function pantallaFormulario(user) {
   contenedorPrincipal.classList.remove('ancho');
+  const provincias = Object.keys(PROVINCIAS_LOCALIDADES);
   cuerpo.innerHTML = `
     <h2>Completá tus datos</h2>
     <label>Apellido</label>
     <input type="text" id="fApellido">
     <label>Nombre</label>
     <input type="text" id="fNombre">
+    <label>Fecha de nacimiento</label>
+    <input type="date" id="fFechaNacimiento">
     <label>DNI</label>
     <input type="text" id="fDni">
     <label>Teléfono</label>
     <input type="tel" id="fTelefono">
-    <label>Dirección</label>
+    <label>Dirección (calle y número)</label>
     <input type="text" id="fDireccion">
+    <label>Provincia</label>
+    <select id="fProvincia">
+      <option value="">Elegí una provincia...</option>
+      ${provincias.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('')}
+    </select>
+    <label>Localidad</label>
+    <select id="fLocalidad" disabled>
+      <option value="">Elegí primero la provincia...</option>
+    </select>
+    <input type="text" id="fLocalidadOtra" placeholder="Escribí tu localidad" class="oculto" style="margin-top:8px;">
     <button id="btnGuardar">Guardar y continuar</button>
     <div id="avisoForm"></div>
     <div class="salir" id="btnSalir">Cerrar sesión</div>
@@ -424,12 +473,44 @@ function pantallaFormulario(user) {
 
   document.getElementById('btnSalir').onclick = () => signOut(auth);
 
+  document.getElementById('fProvincia').addEventListener('change', (e) => {
+    const selectLocalidad = document.getElementById('fLocalidad');
+    const inputOtra = document.getElementById('fLocalidadOtra');
+    inputOtra.classList.add('oculto');
+    inputOtra.value = '';
+    const localidades = PROVINCIAS_LOCALIDADES[e.target.value];
+    if (!localidades) {
+      selectLocalidad.innerHTML = '<option value="">Elegí primero la provincia...</option>';
+      selectLocalidad.disabled = true;
+      return;
+    }
+    selectLocalidad.disabled = false;
+    selectLocalidad.innerHTML = '<option value="">Elegí una localidad...</option>'
+      + localidades.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('')
+      + `<option value="${esc(OPCION_OTRA_LOCALIDAD)}">${esc(OPCION_OTRA_LOCALIDAD)}</option>`;
+  });
+
+  document.getElementById('fLocalidad').addEventListener('change', (e) => {
+    const inputOtra = document.getElementById('fLocalidadOtra');
+    if (e.target.value === OPCION_OTRA_LOCALIDAD) {
+      inputOtra.classList.remove('oculto');
+    } else {
+      inputOtra.classList.add('oculto');
+      inputOtra.value = '';
+    }
+  });
+
   document.getElementById('btnGuardar').onclick = async () => {
     const apellido = document.getElementById('fApellido').value.trim();
     const nombre = document.getElementById('fNombre').value.trim();
+    const fechaNacimiento = document.getElementById('fFechaNacimiento').value;
     const dni = document.getElementById('fDni').value.trim();
     const telefono = document.getElementById('fTelefono').value.trim();
     const direccion = document.getElementById('fDireccion').value.trim();
+    const provincia = document.getElementById('fProvincia').value;
+    const localidadSelect = document.getElementById('fLocalidad').value;
+    const localidadOtra = document.getElementById('fLocalidadOtra').value.trim();
+    const localidad = localidadSelect === OPCION_OTRA_LOCALIDAD ? localidadOtra : localidadSelect;
     const aviso = document.getElementById('avisoForm');
 
     if (!apellido || !nombre || !dni) {
@@ -438,12 +519,13 @@ function pantallaFormulario(user) {
     }
     aviso.innerHTML = '<div class="aviso ok">Guardando...</div>';
     try {
+      const datos = { apellido, nombre, dni, telefono, direccion, provincia, localidad, fechaNacimiento };
       await setDoc(doc(db, 'clientes', user.uid), {
-        apellido, nombre, dni, telefono, direccion,
+        ...datos,
         email: user.email,
         fechaRegistro: serverTimestamp()
       });
-      pantallaDashboard(user, { apellido, nombre, dni, telefono, direccion });
+      pantallaDashboard(user, datos);
     } catch (err) {
       aviso.innerHTML = '<div class="aviso error">Error al guardar: ' + err.message + '</div>';
     }
@@ -463,6 +545,8 @@ async function pantallaDashboard(user, datos) {
     <div class="dato-cliente">
       <strong>${esc(nombreCompleto(datos))}</strong><br>
       DNI: ${esc(datos.dni)} · Tel: ${esc(datos.telefono) || '-'}<br>
+      ${datos.localidad || datos.provincia ? esc([datos.localidad, datos.provincia].filter(Boolean).join(', ')) + '<br>' : ''}
+      ${datos.fechaNacimiento ? 'Nacimiento: ' + esc(formatearFecha(datos.fechaNacimiento)) + '<br>' : ''}
       ${esc(user.email)}
     </div>
 
@@ -735,7 +819,9 @@ function dibujarListaClientes(filtro) {
   listaCont.innerHTML = lista.map(c => `
     <div class="caja fila-cliente${c.tieneNuevo ? ' clienteNuevo' : ''}" data-uid="${c.uid}">
       <h3>${esc(nombreCompleto(c)) || '(sin nombre)'}${c.tieneNuevo ? ' <span class="badgeNuevo">● Nuevo</span>' : ''}</h3>
-      <p>DNI: ${esc(c.dni) || '-'} · Tel: ${esc(c.telefono) || '-'}<br>${esc(c.email) || ''}</p>
+      <p>DNI: ${esc(c.dni) || '-'} · Tel: ${esc(c.telefono) || '-'}<br>
+      ${[c.localidad, c.provincia].filter(Boolean).map(esc).join(', ')}${c.fechaNacimiento ? ' · Nac: ' + esc(formatearFecha(c.fechaNacimiento)) : ''}<br>
+      ${esc(c.email) || ''}</p>
       <div class="detalleCliente oculto" style="margin-top:10px;"></div>
     </div>
   `).join('');
