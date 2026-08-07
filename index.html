@@ -587,7 +587,7 @@ function pantallaFormulario(user) {
     <label>DNI</label>
     <input type="text" id="fDni">
     <label>CUIT/CUIL</label>
-    <input type="text" id="fCuit" placeholder="20-12345678-9">
+    <input type="tel" id="fCuit" placeholder="20-12345678-9">
     <label>Estado civil</label>
     <select id="fEstadoCivil">
       <option value="">Elegí una opción...</option>
@@ -671,6 +671,14 @@ function pantallaFormulario(user) {
       inputOtra.classList.add('oculto');
       inputOtra.value = '';
     }
+  });
+
+  document.getElementById('fCuit').addEventListener('input', (e) => {
+    const digitos = e.target.value.replace(/\D/g, '').slice(0, 11);
+    let resultado = digitos;
+    if (digitos.length > 2) resultado = digitos.slice(0, 2) + '-' + digitos.slice(2);
+    if (digitos.length > 10) resultado = digitos.slice(0, 2) + '-' + digitos.slice(2, 10) + '-' + digitos.slice(10);
+    e.target.value = resultado;
   });
 
   document.getElementById('btnGuardar').onclick = async () => {
