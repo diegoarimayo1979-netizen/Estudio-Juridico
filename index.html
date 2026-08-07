@@ -313,17 +313,12 @@ async function pantallaDashboard(user, datos) {
     </div>
 
     <div class="caja">
-      <h3>Escribir una novedad o consulta</h3>
-      <textarea id="txtNovedad" placeholder="Contame qué necesitás..."></textarea>
-      <button id="btnNovedad">Enviar</button>
-      <div id="avisoNovedad"></div>
-    </div>
-
-    <div class="caja">
-      <h3>Subir un documento</h3>
+      <h3>Escribir una novedad o enviar un documento</h3>
+      <textarea id="txtNovedad" placeholder="Contame qué necesitás... (opcional si adjuntás un archivo)"></textarea>
+      <label>Adjuntar archivo (opcional)</label>
       <input type="file" id="archivoInput">
-      <button id="btnArchivo">Subir archivo</button>
-      <div id="avisoArchivo"></div>
+      <button id="btnEnviarNovedad">Enviar</button>
+      <div id="avisoNovedad"></div>
     </div>
 
     <div class="caja">
@@ -336,38 +331,33 @@ async function pantallaDashboard(user, datos) {
 
   document.getElementById('btnSalir').onclick = () => signOut(auth);
 
-  document.getElementById('btnNovedad').onclick = async () => {
+  document.getElementById('btnEnviarNovedad').onclick = async () => {
     const texto = document.getElementById('txtNovedad').value.trim();
+    const inputArchivo = document.getElementById('archivoInput');
+    const archivo = inputArchivo.files[0];
     const aviso = document.getElementById('avisoNovedad');
-    if (!texto) { aviso.innerHTML = '<div class="aviso error">Escribí algo primero.</div>'; return; }
+    if (!texto && !archivo) {
+      aviso.innerHTML = '<div class="aviso error">Escribí algo o adjuntá un archivo.</div>';
+      return;
+    }
     aviso.innerHTML = '<div class="aviso ok">Enviando...</div>';
     try {
-      await addDoc(collection(db, 'clientes', user.uid, 'novedades'), {
-        texto, fecha: serverTimestamp()
-      });
+      if (texto) {
+        await addDoc(collection(db, 'clientes', user.uid, 'novedades'), {
+          texto, fecha: serverTimestamp()
+        });
+      }
+      if (archivo) {
+        const refArchivo = ref(storage, 'clientes/' + user.uid + '/' + Date.now() + '_' + archivo.name);
+        await uploadBytes(refArchivo, archivo);
+        const url = await getDownloadURL(refArchivo);
+        await addDoc(collection(db, 'clientes', user.uid, 'archivos'), {
+          nombre: archivo.name, url, fecha: serverTimestamp()
+        });
+      }
       document.getElementById('txtNovedad').value = '';
+      inputArchivo.value = '';
       aviso.innerHTML = '<div class="aviso ok">Enviado correctamente.</div>';
-      cargarHistorial(user.uid);
-    } catch (err) {
-      aviso.innerHTML = '<div class="aviso error">Error: ' + err.message + '</div>';
-    }
-  };
-
-  document.getElementById('btnArchivo').onclick = async () => {
-    const input = document.getElementById('archivoInput');
-    const aviso = document.getElementById('avisoArchivo');
-    if (!input.files.length) { aviso.innerHTML = '<div class="aviso error">Elegí un archivo primero.</div>'; return; }
-    const archivo = input.files[0];
-    aviso.innerHTML = '<div class="aviso ok">Subiendo...</div>';
-    try {
-      const refArchivo = ref(storage, 'clientes/' + user.uid + '/' + Date.now() + '_' + archivo.name);
-      await uploadBytes(refArchivo, archivo);
-      const url = await getDownloadURL(refArchivo);
-      await addDoc(collection(db, 'clientes', user.uid, 'archivos'), {
-        nombre: archivo.name, url, fecha: serverTimestamp()
-      });
-      input.value = '';
-      aviso.innerHTML = '<div class="aviso ok">Archivo subido correctamente.</div>';
       cargarHistorial(user.uid);
     } catch (err) {
       aviso.innerHTML = '<div class="aviso error">Error: ' + err.message + '</div>';
@@ -391,7 +381,7 @@ async function cargarMensajesAbogado(uid) {
     snap.forEach(d => {
       const m = d.data();
       const fecha = m.fecha ? new Date(m.fecha.seconds * 1000).toLocaleString('es-AR') : '';
-      html += `<div class="lista-item mensajeAbogado">💬 ${m.texto}<small>${fecha}</small></div>`;
+      html += `<div class="lista-item mensajeAbogado">💬 ${m.texto || ''}${m.archivoUrl ? '<br>📎 <a href="' + m.archivoUrl + '" target="_blank">' + m.archivoNombre + '</a>' : ''}<small>${fecha}</small></div>`;
     });
     cont.innerHTML = html;
   } catch (err) {
@@ -535,7 +525,7 @@ async function renderDetalleCliente(uid, contenedor) {
     msgSnap.forEach(d => {
       const m = d.data();
       const fecha = m.fecha ? new Date(m.fecha.seconds * 1000).toLocaleString('es-AR') : '';
-      htmlMsgs += `<div class="lista-item mensajeAbogado">💬 ${m.texto}<small>${fecha}</small></div>`;
+      htmlMsgs += `<div class="lista-item mensajeAbogado">💬 ${m.texto || ''}${m.archivoUrl ? '<br>📎 <a href="' + m.archivoUrl + '" target="_blank">' + m.archivoNombre + '</a>' : ''}<small>${fecha}</small></div>`;
     });
 
     contenedor.innerHTML = `
@@ -543,8 +533,10 @@ async function renderDetalleCliente(uid, contenedor) {
       ${htmlItems}
       <h3 style="margin-top:14px;margin-bottom:6px;">Mensajes que le enviaste</h3>
       <div>${htmlMsgs || '<p style="font-size:13px;color:#888;font-family:Arial;">Todavía no le enviaste mensajes.</p>'}</div>
-      <label style="margin-top:12px;">Enviar un mensaje a este cliente</label>
-      <textarea class="txtMsgAdmin"></textarea>
+      <label style="margin-top:12px;">Enviar un mensaje o archivo a este cliente</label>
+      <textarea class="txtMsgAdmin" placeholder="Mensaje (opcional si adjuntás un archivo)"></textarea>
+      <label>Adjuntar archivo (opcional)</label>
+      <input type="file" class="archivoMsgAdmin">
       <button class="chica btnEnviarMsgAdmin" data-uid="${uid}">Enviar mensaje</button>
       <div class="avisoMsgAdmin"></div>
     `;
@@ -568,15 +560,25 @@ async function renderDetalleCliente(uid, contenedor) {
       e.stopPropagation();
       const btn = e.target;
       const texto = contenedor.querySelector('.txtMsgAdmin').value.trim();
+      const inputArchivo = contenedor.querySelector('.archivoMsgAdmin');
+      const archivo = inputArchivo.files[0];
       const aviso = contenedor.querySelector('.avisoMsgAdmin');
-      if (!texto) { aviso.innerHTML = '<div class="aviso error">Escribí un mensaje primero.</div>'; return; }
+      if (!texto && !archivo) { aviso.innerHTML = '<div class="aviso error">Escribí un mensaje o adjuntá un archivo.</div>'; return; }
       aviso.innerHTML = '<div class="aviso ok">Enviando...</div>';
       try {
-        await addDoc(collection(db, 'clientes', btn.dataset.uid, 'mensajes'), {
-          texto, fecha: serverTimestamp()
-        });
+        let archivoUrl = null, archivoNombre = null;
+        if (archivo) {
+          const refArchivo = ref(storage, 'clientes/' + btn.dataset.uid + '/admin_' + Date.now() + '_' + archivo.name);
+          await uploadBytes(refArchivo, archivo);
+          archivoUrl = await getDownloadURL(refArchivo);
+          archivoNombre = archivo.name;
+        }
+        const datosMsg = { texto: texto || '', fecha: serverTimestamp() };
+        if (archivoUrl) { datosMsg.archivoUrl = archivoUrl; datosMsg.archivoNombre = archivoNombre; }
+        await addDoc(collection(db, 'clientes', btn.dataset.uid, 'mensajes'), datosMsg);
         aviso.innerHTML = '<div class="aviso ok">Mensaje enviado.</div>';
         contenedor.querySelector('.txtMsgAdmin').value = '';
+        inputArchivo.value = '';
         renderDetalleCliente(uid, contenedor);
       } catch (err) {
         aviso.innerHTML = '<div class="aviso error">Error: ' + err.message + '</div>';
