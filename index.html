@@ -589,6 +589,7 @@ const PROVINCIAS_LOCALIDADES = {
   "Tucumán": ["Aguilares","Banda del Río Salí","Concepción","Monteros","San Miguel de Tucumán","Tafí del Valle","Tafí Viejo","Yerba Buena"]
 };
 const OPCION_OTRA_LOCALIDAD = "Otra (especificar)";
+const TIPOS_DOCUMENTO = ["DNI", "DNI Extranjero", "Pasaporte", "Cédula de Identidad (CI)", "Otro"];
 const NACIONALIDADES = [
   "Alemana", "Argentina", "Boliviana", "Brasileña", "Chilena", "China",
   "Colombiana", "Coreana", "Ecuatoriana", "Española", "Estadounidense",
@@ -627,8 +628,13 @@ function pantallaFormulario(user, datosExistentes = null) {
       <option value="${esc(OPCION_OTRA_LOCALIDAD)}">${esc(OPCION_OTRA_LOCALIDAD)}</option>
     </select>
     <input type="text" id="fNacionalidadOtra" placeholder="Escribí tu nacionalidad" class="oculto" style="margin-top:8px;">
-    <label>DNI</label>
-    <input type="text" id="fDni" value="${esc(d.dni || '')}">
+    <label>Tipo de documento</label>
+    <select id="fTipoDocumento">
+      ${TIPOS_DOCUMENTO.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('')}
+    </select>
+    <label id="labelDni">Número de documento</label>
+    <input type="text" id="fDni" placeholder="Número de documento" value="${esc(d.dni || '')}">
+    <p id="ayudaDniExtranjero" class="oculto" style="font-size:12px;font-family:Arial,sans-serif;color:#666;margin-top:-8px;margin-bottom:8px;">Escribí el número tal como figura en el documento (se aceptan letras y números).</p>
     <label>CUIT/CUIL</label>
     <input type="tel" id="fCuit" placeholder="20-12345678-9" value="${esc(d.cuit || '')}">
     <label>Estado civil</label>
@@ -695,6 +701,9 @@ function pantallaFormulario(user, datosExistentes = null) {
     }
   }
 
+  // Preseleccionar Tipo de documento (por defecto "DNI" para fichas viejas que no lo tenían guardado)
+  document.getElementById('fTipoDocumento').value = d.tipoDocumento && TIPOS_DOCUMENTO.includes(d.tipoDocumento) ? d.tipoDocumento : 'DNI';
+
   // Preseleccionar Estado civil / Área de consulta / Cómo nos conoció
   if (d.estadoCivil) document.getElementById('fEstadoCivil').value = d.estadoCivil;
   if (d.areaConsulta) document.getElementById('fAreaConsulta').value = d.areaConsulta;
@@ -756,6 +765,22 @@ function pantallaFormulario(user, datosExistentes = null) {
     }
   });
 
+  function actualizarAyudaDni() {
+    const tipoDoc = document.getElementById('fTipoDocumento').value;
+    const esDNI = tipoDoc === 'DNI';
+    const ayuda = document.getElementById('ayudaDniExtranjero');
+    const label = document.getElementById('labelDni');
+    if (ayuda) ayuda.classList.toggle('oculto', esDNI);
+    if (label) label.textContent = esDNI ? 'Número de DNI' : 'Número de documento';
+    // Al cambiar el tipo, reaplicar el filtro de caracteres sobre lo ya escrito
+    const inputDni = document.getElementById('fDni');
+    if (esDNI) {
+      inputDni.value = inputDni.value.replace(/\D/g, '').slice(0, 8);
+    }
+  }
+  document.getElementById('fTipoDocumento').addEventListener('change', actualizarAyudaDni);
+  actualizarAyudaDni();
+
   document.getElementById('fCuit').addEventListener('input', (e) => {
     const digitos = e.target.value.replace(/\D/g, '').slice(0, 11);
     let resultado = digitos;
@@ -765,7 +790,12 @@ function pantallaFormulario(user, datosExistentes = null) {
   });
 
   document.getElementById('fDni').addEventListener('input', (e) => {
-    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 8);
+    const esDNI = document.getElementById('fTipoDocumento').value === 'DNI';
+    if (esDNI) {
+      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 8);
+    } else {
+      e.target.value = e.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 20).toUpperCase();
+    }
   });
 
   document.getElementById('btnGuardar').onclick = async () => {
@@ -775,6 +805,7 @@ function pantallaFormulario(user, datosExistentes = null) {
     const nacionalidadSelect = document.getElementById('fNacionalidad').value;
     const nacionalidadOtra = document.getElementById('fNacionalidadOtra').value.trim();
     const nacionalidad = nacionalidadSelect === OPCION_OTRA_LOCALIDAD ? nacionalidadOtra : nacionalidadSelect;
+    const tipoDocumento = document.getElementById('fTipoDocumento').value;
     const dni = document.getElementById('fDni').value.trim();
     const cuit = document.getElementById('fCuit').value.trim();
     const estadoCivil = document.getElementById('fEstadoCivil').value;
@@ -794,11 +825,15 @@ function pantallaFormulario(user, datosExistentes = null) {
     const aviso = document.getElementById('avisoForm');
 
     if (!apellido || !nombre || !dni) {
-      aviso.innerHTML = '<div class="aviso error">Apellido, nombre y DNI son obligatorios.</div>';
+      aviso.innerHTML = '<div class="aviso error">Apellido, nombre y número de documento son obligatorios.</div>';
       return;
     }
-    if (!validarDNI(dni)) {
+    if (tipoDocumento === 'DNI' && !validarDNI(dni)) {
       aviso.innerHTML = '<div class="aviso error">El DNI debe tener 7 u 8 dígitos, sin puntos ni letras.</div>';
+      return;
+    }
+    if (tipoDocumento !== 'DNI' && dni.length < 4) {
+      aviso.innerHTML = '<div class="aviso error">Ingresá el número de documento completo (mínimo 4 caracteres).</div>';
       return;
     }
     if (cuit && !validarCUIT(cuit)) {
@@ -812,7 +847,7 @@ function pantallaFormulario(user, datosExistentes = null) {
     aviso.innerHTML = '<div class="aviso ok">Guardando...</div>';
     try {
       const datos = {
-        apellido, nombre, dni, telefono, direccion, provincia, localidad, fechaNacimiento,
+        apellido, nombre, dni, tipoDocumento, telefono, direccion, provincia, localidad, fechaNacimiento,
         nacionalidad, cuit, estadoCivil, ocupacion, codigoPostal, areaConsulta,
         contactoNombre, contactoTelefono, comoConocio
       };
@@ -837,13 +872,20 @@ function nombreCompleto(c) {
   return c.apellido || c.nombre || '';
 }
 
+// ---------- FUNCIÓN AUXILIAR: etiqueta de documento (tipo + número) ----------
+function etiquetaDocumento(c) {
+  if (!c.dni) return '';
+  const tipo = c.tipoDocumento || 'DNI';
+  return tipo + ': ' + c.dni;
+}
+
 // ---------- PANTALLA: DASHBOARD DE CLIENTE ----------
 async function pantallaDashboard(user, datos) {
   contenedorPrincipal.classList.remove('ancho');
   cuerpo.innerHTML = `
     <div class="dato-cliente">
       <strong>${esc(nombreCompleto(datos))}</strong><br>
-      DNI: ${esc(datos.dni)}${datos.cuit ? ' · CUIT: ' + esc(datos.cuit) : ''} · Tel: ${esc(datos.telefono) || '-'}<br>
+      ${esc(etiquetaDocumento(datos))}${datos.cuit ? ' · CUIT: ' + esc(datos.cuit) : ''} · Tel: ${esc(datos.telefono) || '-'}<br>
       ${datos.localidad || datos.provincia ? esc([datos.localidad, datos.provincia].filter(Boolean).join(', ')) + '<br>' : ''}
       ${datos.fechaNacimiento ? 'Nacimiento: ' + esc(formatearFecha(datos.fechaNacimiento)) + '<br>' : ''}
       ${datos.estadoCivil || datos.ocupacion ? esc([datos.estadoCivil, datos.ocupacion].filter(Boolean).join(' · ')) + '<br>' : ''}
@@ -1303,7 +1345,7 @@ function dibujarListaClientes(filtro) {
   listaCont.innerHTML = lista.map(c => `
     <div class="caja fila-cliente${c.tieneNuevo ? ' clienteNuevo' : ''}" data-uid="${c.uid}">
       <h3>${esc(nombreCompleto(c)) || '(sin nombre)'}${c.tieneNuevo ? ' <span class="badgeNuevo">● Nuevo</span>' : ''}</h3>
-      <p>DNI: ${esc(c.dni) || '-'} · Tel: ${esc(c.telefono) || '-'}<br>
+      <p>${esc(etiquetaDocumento(c)) || 'Sin documento'} · Tel: ${esc(c.telefono) || '-'}<br>
       ${[c.localidad, c.provincia].filter(Boolean).map(esc).join(', ')}${c.fechaNacimiento ? ' · Nac: ' + esc(formatearFecha(c.fechaNacimiento)) : ''}<br>
       ${esc(c.email) || ''}</p>
       <div class="detalleCliente oculto" style="margin-top:10px;"></div>
@@ -1673,7 +1715,7 @@ async function renderDetalleCliente(uid, contenedor) {
   <h1>Estudio Jurídico - Ficha de Cliente</h1>
   <p class="encabezadoFicha">Generado el ${fechaHoy}</p>
   <h2>${esc(nombreCompleto(c)) || '(sin nombre)'}</h2>
-  <p><strong>DNI:</strong> ${esc(c.dni) || '-'} ${c.cuit ? '· <strong>CUIT/CUIL:</strong> ' + esc(c.cuit) : ''}</p>
+  <p><strong>${esc((c.tipoDocumento || 'DNI'))}:</strong> ${esc(c.dni) || '-'} ${c.cuit ? '· <strong>CUIT/CUIL:</strong> ' + esc(c.cuit) : ''}</p>
   <p><strong>Teléfono:</strong> ${esc(c.telefono) || '-'} · <strong>Email:</strong> ${esc(c.email) || '-'}</p>
   ${c.localidad || c.provincia ? '<p><strong>Localidad:</strong> ' + esc([c.localidad, c.provincia].filter(Boolean).join(', ')) + '</p>' : ''}
   ${filasHtml}
