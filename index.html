@@ -182,6 +182,126 @@ const cuerpo = document.getElementById('cuerpo');
 const contenedorPrincipal = document.getElementById('contenedorPrincipal');
 const ADMIN_EMAIL = 'diegoarimayo1979@gmail.com';
 
+// ---------- IDIOMA (login y formulario de registro) ----------
+// El resto del portal (panel del cliente ya logueado y panel admin) permanece en español.
+let idiomaActual = localStorage.getItem('portalIdioma') || 'es';
+
+const TEXTOS = {
+  es: {
+    tituloLogin: 'Iniciar sesión', tituloRegistro: 'Crear tu cuenta',
+    labelEmail: 'Email', labelPass: 'Contraseña', placeholderPass: 'Mínimo 6 caracteres',
+    btnIngresar: 'Ingresar', btnCrearCuenta: 'Crear cuenta',
+    linkYaTengoCuenta: '¿Ya tenés cuenta? Iniciar sesión', linkCrearCuenta: '¿Primera vez? Crear una cuenta',
+    linkOlvide: '¿Olvidaste tu contraseña?', otroDominio: 'Otro (escribir)',
+    placeholderDominioOtro: 'tudominio.com', placeholderUsuario: 'usuario',
+    completarCampos: 'Completá email y contraseña.', procesando: 'Procesando...',
+    escribirEmailPrimero: 'Escribí primero tu email arriba, y después tocá "¿Olvidaste tu contraseña?".',
+    enviando: 'Enviando...',
+    emailEnviado: 'Si ese email tiene una cuenta creada, te enviamos un link para restablecer tu contraseña. Revisá tu bandeja de entrada y, si no lo ves ahí, también la carpeta de spam o correo no deseado.',
+    cambiarIdioma: 'English',
+    errEmailUso: 'Ese email ya tiene una cuenta creada. Probá iniciar sesión.',
+    errEmailInvalido: 'El email no es válido.', errPassDebil: 'La contraseña debe tener al menos 6 caracteres.',
+    errCredencial: 'Email o contraseña incorrectos.', errPassIncorrecta: 'Contraseña incorrecta.',
+    errUsuarioNoExiste: 'No existe una cuenta con ese email.', errGenerico: 'Ocurrió un error. Intentá de nuevo.',
+    tituloCompletarDatos: 'Completá tus datos', tituloEditarDatos: 'Editar mis datos',
+    labelApellido: 'Apellido', labelNombre: 'Nombre', labelFechaNacimiento: 'Fecha de nacimiento',
+    labelNacionalidad: 'Nacionalidad', elegirOpcion: 'Elegí una opción...',
+    placeholderNacionalidadOtra: 'Escribí tu nacionalidad', otraOpcion: 'Otra (especificar)',
+    labelTipoDocumento: 'Tipo de documento', labelNumeroDocumento: 'Número de documento',
+    labelNumeroDNI: 'Número de DNI',
+    ayudaDocumentoExtranjero: 'Escribí el número tal como figura en el documento (se aceptan letras y números).',
+    labelCuit: 'CUIT/CUIL', labelEstadoCivil: 'Estado civil', labelOcupacion: 'Ocupación / profesión',
+    labelTelefono: 'Teléfono', labelDireccion: 'Dirección (calle y número)', labelCodigoPostal: 'Código postal',
+    labelProvincia: 'Provincia', elegirProvincia: 'Elegí una provincia...',
+    labelLocalidad: 'Localidad', elegirLocalidadPrimero: 'Elegí primero la provincia...',
+    elegirLocalidad: 'Elegí una localidad...', placeholderLocalidadOtra: 'Escribí tu localidad',
+    labelAreaConsulta: 'Área de consulta',
+    labelContactoNombre: 'Contacto de referencia - Nombre (opcional)',
+    labelContactoTelefono: 'Contacto de referencia - Teléfono (opcional)',
+    labelComoConocio: '¿Cómo nos conociste?',
+    textoPrivacidad: 'Acepto que mis datos sean utilizados para la gestión de mi caso, según la',
+    linkPoliticaPrivacidad: 'Política de Privacidad',
+    btnGuardarCambios: 'Guardar cambios', btnGuardarContinuar: 'Guardar y continuar',
+    linkCancelar: 'Cancelar y volver', linkCerrarSesion: 'Cerrar sesión',
+    errCamposObligatorios: 'Apellido, nombre y número de documento son obligatorios.',
+    errDniInvalido: 'El DNI debe tener 7 u 8 dígitos, sin puntos ni letras.',
+    errDocumentoCorto: 'Ingresá el número de documento completo (mínimo 4 caracteres).',
+    errCuitInvalido: 'El CUIT/CUIL no es válido. Revisá que esté completo y bien escrito (formato 20-12345678-9).',
+    errPrivacidad: 'Debés aceptar la Política de Privacidad para continuar.',
+    guardando: 'Guardando...', errorGuardar: 'Error al guardar: '
+  },
+  en: {
+    tituloLogin: 'Log in', tituloRegistro: 'Create your account',
+    labelEmail: 'Email', labelPass: 'Password', placeholderPass: 'Minimum 6 characters',
+    btnIngresar: 'Log in', btnCrearCuenta: 'Create account',
+    linkYaTengoCuenta: 'Already have an account? Log in', linkCrearCuenta: 'First time here? Create an account',
+    linkOlvide: 'Forgot your password?', otroDominio: 'Other (type it)',
+    placeholderDominioOtro: 'yourdomain.com', placeholderUsuario: 'username',
+    completarCampos: 'Please fill in email and password.', procesando: 'Processing...',
+    escribirEmailPrimero: 'First type your email above, then tap "Forgot your password?".',
+    enviando: 'Sending...',
+    emailEnviado: 'If that email has an account, we sent a link to reset your password. Check your inbox, and if you don\'t see it there, check your spam folder too.',
+    cambiarIdioma: 'Español',
+    errEmailUso: 'That email already has an account. Try logging in instead.',
+    errEmailInvalido: 'The email is not valid.', errPassDebil: 'The password must be at least 6 characters.',
+    errCredencial: 'Incorrect email or password.', errPassIncorrecta: 'Incorrect password.',
+    errUsuarioNoExiste: 'There is no account with that email.', errGenerico: 'Something went wrong. Please try again.',
+    tituloCompletarDatos: 'Complete your information', tituloEditarDatos: 'Edit my information',
+    labelApellido: 'Last name', labelNombre: 'First name', labelFechaNacimiento: 'Date of birth',
+    labelNacionalidad: 'Nationality', elegirOpcion: 'Choose an option...',
+    placeholderNacionalidadOtra: 'Type your nationality', otraOpcion: 'Other (specify)',
+    labelTipoDocumento: 'Document type', labelNumeroDocumento: 'Document number',
+    labelNumeroDNI: 'DNI number',
+    ayudaDocumentoExtranjero: 'Type the number exactly as it appears on your document (letters and numbers are accepted).',
+    labelCuit: 'Tax ID (CUIT/CUIL)', labelEstadoCivil: 'Marital status', labelOcupacion: 'Occupation / profession',
+    labelTelefono: 'Phone number', labelDireccion: 'Address (street and number)', labelCodigoPostal: 'Postal code',
+    labelProvincia: 'Province', elegirProvincia: 'Choose a province...',
+    labelLocalidad: 'City/Town', elegirLocalidadPrimero: 'Choose the province first...',
+    elegirLocalidad: 'Choose a city/town...', placeholderLocalidadOtra: 'Type your city/town',
+    labelAreaConsulta: 'Area of inquiry',
+    labelContactoNombre: 'Reference contact - Name (optional)',
+    labelContactoTelefono: 'Reference contact - Phone (optional)',
+    labelComoConocio: 'How did you hear about us?',
+    textoPrivacidad: 'I agree that my information will be used to manage my case, according to the',
+    linkPoliticaPrivacidad: 'Privacy Policy',
+    btnGuardarCambios: 'Save changes', btnGuardarContinuar: 'Save and continue',
+    linkCancelar: 'Cancel and go back', linkCerrarSesion: 'Log out',
+    errCamposObligatorios: 'Last name, first name, and document number are required.',
+    errDniInvalido: 'The DNI must have 7 or 8 digits, no dots or letters.',
+    errDocumentoCorto: 'Enter the full document number (minimum 4 characters).',
+    errCuitInvalido: 'The Tax ID (CUIT/CUIL) is not valid. Check that it is complete and correctly typed (format 20-12345678-9).',
+    errPrivacidad: 'You must accept the Privacy Policy to continue.',
+    guardando: 'Saving...', errorGuardar: 'Error saving: '
+  }
+};
+
+// Traducción de las opciones de los desplegables (el valor guardado en Firestore sigue siendo en español)
+const OPCIONES_EN = {
+  estadoCivil: { 'Soltero/a': 'Single', 'Casado/a': 'Married', 'Divorciado/a': 'Divorced', 'Viudo/a': 'Widowed', 'Unión convivencial': 'Domestic partnership' },
+  areaConsulta: { 'Civil': 'Civil', 'Laboral': 'Labor', 'Familia': 'Family', 'Penal': 'Criminal', 'Comercial': 'Commercial', 'Sucesiones': 'Estate/Probate', 'Otro': 'Other' },
+  comoConocio: { 'Referido': 'Referral', 'Redes sociales': 'Social media', 'Google': 'Google', 'Otro': 'Other' },
+  tipoDocumento: { 'DNI': 'DNI (Argentine ID)', 'DNI Extranjero': 'Foreign DNI', 'Pasaporte': 'Passport', 'Cédula de Identidad (CI)': 'ID Card (CI)', 'Otro': 'Other' },
+  nacionalidad: {
+    'Alemana': 'German', 'Argentina': 'Argentine', 'Boliviana': 'Bolivian', 'Brasileña': 'Brazilian', 'Chilena': 'Chilean',
+    'China': 'Chinese', 'Colombiana': 'Colombian', 'Coreana': 'Korean', 'Ecuatoriana': 'Ecuadorian', 'Española': 'Spanish',
+    'Estadounidense': 'American', 'Francesa': 'French', 'Italiana': 'Italian', 'Japonesa': 'Japanese', 'Mexicana': 'Mexican',
+    'Paraguaya': 'Paraguayan', 'Peruana': 'Peruvian', 'Portuguesa': 'Portuguese', 'Rusa': 'Russian', 'Ucraniana': 'Ukrainian',
+    'Uruguaya': 'Uruguayan', 'Venezolana': 'Venezuelan'
+  }
+};
+
+function t(clave) {
+  return (TEXTOS[idiomaActual] && TEXTOS[idiomaActual][clave]) || TEXTOS.es[clave] || clave;
+}
+function trOpcion(categoria, valorEs) {
+  if (idiomaActual === 'es') return valorEs;
+  return (OPCIONES_EN[categoria] && OPCIONES_EN[categoria][valorEs]) || valorEs;
+}
+function alternarIdioma() {
+  idiomaActual = idiomaActual === 'es' ? 'en' : 'es';
+  localStorage.setItem('portalIdioma', idiomaActual);
+}
+
 // ---------- BOT DE AYUDA RÁPIDA (preguntas frecuentes) ----------
 // Para editar las preguntas/respuestas, modificá esta lista.
 const FAQ_BOT = [
@@ -464,10 +584,13 @@ if (messaging) {
 function pantallaLogin(modoRegistro = false) {
   contenedorPrincipal.classList.remove('ancho');
   cuerpo.innerHTML = `
-    <h2>${modoRegistro ? 'Crear tu cuenta' : 'Iniciar sesión'}</h2>
-    <label>Email</label>
+    <div style="text-align:right;">
+      <span class="enlace-cambio" id="btnIdioma" style="margin-top:0;display:inline-block;">🌐 ${t('cambiarIdioma')}</span>
+    </div>
+    <h2>${modoRegistro ? t('tituloRegistro') : t('tituloLogin')}</h2>
+    <label>${t('labelEmail')}</label>
     <div style="display:flex;gap:6px;align-items:center;">
-      <input type="text" id="inEmailUsuario" placeholder="usuario" style="flex:1;min-width:0;" autocapitalize="off">
+      <input type="text" id="inEmailUsuario" placeholder="${t('placeholderUsuario')}" style="flex:1;min-width:0;" autocapitalize="off">
       <span>@</span>
       <select id="inEmailDominio" style="flex:1;min-width:0;">
         <option value="gmail.com">gmail.com</option>
@@ -477,22 +600,23 @@ function pantallaLogin(modoRegistro = false) {
         <option value="yahoo.com.ar">yahoo.com.ar</option>
         <option value="icloud.com">icloud.com</option>
         <option value="live.com.ar">live.com.ar</option>
-        <option value="otro">Otro (escribir)</option>
+        <option value="otro">${t('otroDominio')}</option>
       </select>
     </div>
-    <input type="text" id="inEmailDominioOtro" placeholder="tudominio.com" class="oculto" style="margin-top:8px;" autocapitalize="off">
-    <label>Contraseña</label>
-    <input type="password" id="inPass" placeholder="Mínimo 6 caracteres">
-    <button id="btnAccion">${modoRegistro ? 'Crear cuenta' : 'Ingresar'}</button>
+    <input type="text" id="inEmailDominioOtro" placeholder="${t('placeholderDominioOtro')}" class="oculto" style="margin-top:8px;" autocapitalize="off">
+    <label>${t('labelPass')}</label>
+    <input type="password" id="inPass" placeholder="${t('placeholderPass')}">
+    <button id="btnAccion">${modoRegistro ? t('btnCrearCuenta') : t('btnIngresar')}</button>
     <div class="enlace-cambio" id="btnCambiar">
-      ${modoRegistro ? '¿Ya tenés cuenta? Iniciar sesión' : '¿Primera vez? Crear una cuenta'}
+      ${modoRegistro ? t('linkYaTengoCuenta') : t('linkCrearCuenta')}
     </div>
-    ${!modoRegistro ? '<div class="enlace-cambio" id="btnOlvide">¿Olvidaste tu contraseña?</div>' : ''}
+    ${!modoRegistro ? '<div class="enlace-cambio" id="btnOlvide">' + t('linkOlvide') + '</div>' : ''}
     <div id="avisoLogin"></div>
     ${htmlCajaInstalar()}
   `;
 
   wireCajaInstalar();
+  document.getElementById('btnIdioma').onclick = () => { alternarIdioma(); pantallaLogin(modoRegistro); };
   document.getElementById('btnCambiar').onclick = () => pantallaLogin(!modoRegistro);
 
   document.getElementById('inEmailDominio').addEventListener('change', (e) => {
@@ -514,13 +638,13 @@ function pantallaLogin(modoRegistro = false) {
       const email = obtenerEmailIngresado();
       const aviso = document.getElementById('avisoLogin');
       if (!email) {
-        aviso.innerHTML = '<div class="aviso error">Escribí primero tu email arriba, y después tocá "¿Olvidaste tu contraseña?".</div>';
+        aviso.innerHTML = '<div class="aviso error">' + t('escribirEmailPrimero') + '</div>';
         return;
       }
-      aviso.innerHTML = '<div class="aviso ok">Enviando...</div>';
+      aviso.innerHTML = '<div class="aviso ok">' + t('enviando') + '</div>';
       try {
         await sendPasswordResetEmail(auth, email);
-        aviso.innerHTML = '<div class="aviso ok">Si ese email tiene una cuenta creada, te enviamos un link para restablecer tu contraseña. Revisá tu bandeja de entrada y, si no lo ves ahí, también la carpeta de spam o correo no deseado.</div>';
+        aviso.innerHTML = '<div class="aviso ok">' + t('emailEnviado') + '</div>';
       } catch (err) {
         aviso.innerHTML = '<div class="aviso error">' + traducirError(err.code) + '</div>';
       }
@@ -532,10 +656,10 @@ function pantallaLogin(modoRegistro = false) {
     const pass = document.getElementById('inPass').value;
     const aviso = document.getElementById('avisoLogin');
     if (!email || !pass) {
-      aviso.innerHTML = '<div class="aviso error">Completá email y contraseña.</div>';
+      aviso.innerHTML = '<div class="aviso error">' + t('completarCampos') + '</div>';
       return;
     }
-    aviso.innerHTML = '<div class="aviso ok">Procesando...</div>';
+    aviso.innerHTML = '<div class="aviso ok">' + t('procesando') + '</div>';
     try {
       if (modoRegistro) {
         await createUserWithEmailAndPassword(auth, email, pass);
@@ -563,14 +687,14 @@ function pantallaLogin(modoRegistro = false) {
 
 function traducirError(code) {
   const mapa = {
-    'auth/email-already-in-use': 'Ese email ya tiene una cuenta creada. Probá iniciar sesión.',
-    'auth/invalid-email': 'El email no es válido.',
-    'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.',
-    'auth/invalid-credential': 'Email o contraseña incorrectos.',
-    'auth/wrong-password': 'Contraseña incorrecta.',
-    'auth/user-not-found': 'No existe una cuenta con ese email.'
+    'auth/email-already-in-use': t('errEmailUso'),
+    'auth/invalid-email': t('errEmailInvalido'),
+    'auth/weak-password': t('errPassDebil'),
+    'auth/invalid-credential': t('errCredencial'),
+    'auth/wrong-password': t('errPassIncorrecta'),
+    'auth/user-not-found': t('errUsuarioNoExiste')
   };
-  return mapa[code] || 'Ocurrió un error. Intentá de nuevo.';
+  return mapa[code] || t('errGenerico');
 }
 
 // ---------- PANTALLA: FORMULARIO DE REGISTRO DE DATOS (cliente) ----------
@@ -627,76 +751,80 @@ function pantallaFormulario(user, datosExistentes = null) {
   const esEdicion = !!datosExistentes;
 
   cuerpo.innerHTML = `
-    <h2>${esEdicion ? 'Editar mis datos' : 'Completá tus datos'}</h2>
-    <label>Apellido</label>
+    <div style="text-align:right;">
+      <span class="enlace-cambio" id="btnIdiomaForm" style="margin-top:0;display:inline-block;">🌐 ${t('cambiarIdioma')}</span>
+    </div>
+    <h2>${esEdicion ? t('tituloEditarDatos') : t('tituloCompletarDatos')}</h2>
+    <label>${t('labelApellido')}</label>
     <input type="text" id="fApellido" value="${esc(d.apellido || '')}">
-    <label>Nombre</label>
+    <label>${t('labelNombre')}</label>
     <input type="text" id="fNombre" value="${esc(d.nombre || '')}">
-    <label>Fecha de nacimiento</label>
+    <label>${t('labelFechaNacimiento')}</label>
     <input type="date" id="fFechaNacimiento" value="${esc(d.fechaNacimiento || '')}">
-    <label>Nacionalidad</label>
+    <label>${t('labelNacionalidad')}</label>
     <select id="fNacionalidad">
-      <option value="">Elegí una opción...</option>
-      ${NACIONALIDADES.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}
-      <option value="${esc(OPCION_OTRA_LOCALIDAD)}">${esc(OPCION_OTRA_LOCALIDAD)}</option>
+      <option value="">${t('elegirOpcion')}</option>
+      ${NACIONALIDADES.map(n => `<option value="${esc(n)}">${esc(trOpcion('nacionalidad', n))}</option>`).join('')}
+      <option value="${esc(OPCION_OTRA_LOCALIDAD)}">${esc(t('otraOpcion'))}</option>
     </select>
-    <input type="text" id="fNacionalidadOtra" placeholder="Escribí tu nacionalidad" class="oculto" style="margin-top:8px;">
-    <label>Tipo de documento</label>
+    <input type="text" id="fNacionalidadOtra" placeholder="${t('placeholderNacionalidadOtra')}" class="oculto" style="margin-top:8px;">
+    <label>${t('labelTipoDocumento')}</label>
     <select id="fTipoDocumento">
-      ${TIPOS_DOCUMENTO.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('')}
+      ${TIPOS_DOCUMENTO.map(tipo => `<option value="${esc(tipo)}">${esc(trOpcion('tipoDocumento', tipo))}</option>`).join('')}
     </select>
-    <label id="labelDni">Número de documento</label>
-    <input type="text" id="fDni" placeholder="Número de documento" value="${esc(d.dni || '')}">
-    <p id="ayudaDniExtranjero" class="oculto" style="font-size:12px;font-family:Arial,sans-serif;color:#666;margin-top:-8px;margin-bottom:8px;">Escribí el número tal como figura en el documento (se aceptan letras y números).</p>
-    <label>CUIT/CUIL</label>
+    <label id="labelDni">${t('labelNumeroDocumento')}</label>
+    <input type="text" id="fDni" placeholder="${t('labelNumeroDocumento')}" value="${esc(d.dni || '')}">
+    <p id="ayudaDniExtranjero" class="oculto" style="font-size:12px;font-family:Arial,sans-serif;color:#666;margin-top:-8px;margin-bottom:8px;">${t('ayudaDocumentoExtranjero')}</p>
+    <label>${t('labelCuit')}</label>
     <input type="tel" id="fCuit" placeholder="20-12345678-9" value="${esc(d.cuit || '')}">
-    <label>Estado civil</label>
+    <label>${t('labelEstadoCivil')}</label>
     <select id="fEstadoCivil">
-      <option value="">Elegí una opción...</option>
-      ${ESTADOS_CIVILES.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}
+      <option value="">${t('elegirOpcion')}</option>
+      ${ESTADOS_CIVILES.map(o => `<option value="${esc(o)}">${esc(trOpcion('estadoCivil', o))}</option>`).join('')}
     </select>
-    <label>Ocupación / profesión</label>
+    <label>${t('labelOcupacion')}</label>
     <input type="text" id="fOcupacion" value="${esc(d.ocupacion || '')}">
-    <label>Teléfono</label>
+    <label>${t('labelTelefono')}</label>
     <input type="tel" id="fTelefono" value="${esc(d.telefono || '')}">
-    <label>Dirección (calle y número)</label>
+    <label>${t('labelDireccion')}</label>
     <input type="text" id="fDireccion" value="${esc(d.direccion || '')}">
-    <label>Código postal</label>
+    <label>${t('labelCodigoPostal')}</label>
     <input type="text" id="fCodigoPostal" value="${esc(d.codigoPostal || '')}">
-    <label>Provincia</label>
+    <label>${t('labelProvincia')}</label>
     <select id="fProvincia">
-      <option value="">Elegí una provincia...</option>
+      <option value="">${t('elegirProvincia')}</option>
       ${provincias.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('')}
     </select>
-    <label>Localidad</label>
+    <label>${t('labelLocalidad')}</label>
     <select id="fLocalidad" disabled>
-      <option value="">Elegí primero la provincia...</option>
+      <option value="">${t('elegirLocalidadPrimero')}</option>
     </select>
-    <input type="text" id="fLocalidadOtra" placeholder="Escribí tu localidad" class="oculto" style="margin-top:8px;">
-    <label>Área de consulta</label>
+    <input type="text" id="fLocalidadOtra" placeholder="${t('placeholderLocalidadOtra')}" class="oculto" style="margin-top:8px;">
+    <label>${t('labelAreaConsulta')}</label>
     <select id="fAreaConsulta">
-      <option value="">Elegí una opción...</option>
-      ${AREAS_CONSULTA.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}
+      <option value="">${t('elegirOpcion')}</option>
+      ${AREAS_CONSULTA.map(o => `<option value="${esc(o)}">${esc(trOpcion('areaConsulta', o))}</option>`).join('')}
     </select>
-    <label>Contacto de referencia - Nombre (opcional)</label>
+    <label>${t('labelContactoNombre')}</label>
     <input type="text" id="fContactoNombre" value="${esc(d.contactoNombre || '')}">
-    <label>Contacto de referencia - Teléfono (opcional)</label>
+    <label>${t('labelContactoTelefono')}</label>
     <input type="tel" id="fContactoTelefono" value="${esc(d.contactoTelefono || '')}">
-    <label>¿Cómo nos conociste?</label>
+    <label>${t('labelComoConocio')}</label>
     <select id="fComoConocio">
-      <option value="">Elegí una opción...</option>
-      ${COMO_CONOCIO.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}
+      <option value="">${t('elegirOpcion')}</option>
+      ${COMO_CONOCIO.map(o => `<option value="${esc(o)}">${esc(trOpcion('comoConocio', o))}</option>`).join('')}
     </select>
     <label style="display:flex;align-items:flex-start;gap:8px;margin-top:18px;font-weight:normal;">
       <input type="checkbox" id="fAceptaPrivacidad" style="width:auto;margin-top:3px;" ${d.aceptaPrivacidad ? 'checked' : ''}>
-      <span>Acepto que mis datos sean utilizados para la gestión de mi caso, según la <a href="privacidad.html" target="_blank">Política de Privacidad</a>.</span>
+      <span>${t('textoPrivacidad')} <a href="privacidad.html" target="_blank">${t('linkPoliticaPrivacidad')}</a>.</span>
     </label>
-    <button id="btnGuardar">${esEdicion ? 'Guardar cambios' : 'Guardar y continuar'}</button>
+    <button id="btnGuardar">${esEdicion ? t('btnGuardarCambios') : t('btnGuardarContinuar')}</button>
     <div id="avisoForm"></div>
-    ${esEdicion ? '<div class="enlace-cambio" id="btnCancelarEdicion">Cancelar y volver</div>' : ''}
-    <div class="salir" id="btnSalir">Cerrar sesión</div>
+    ${esEdicion ? '<div class="enlace-cambio" id="btnCancelarEdicion">' + t('linkCancelar') + '</div>' : ''}
+    <div class="salir" id="btnSalir">${t('linkCerrarSesion')}</div>
   `;
 
+  document.getElementById('btnIdiomaForm').onclick = () => { alternarIdioma(); pantallaFormulario(user, datosExistentes); };
   document.getElementById('btnSalir').onclick = () => signOut(auth);
   const btnCancelar = document.getElementById('btnCancelarEdicion');
   if (btnCancelar) btnCancelar.onclick = () => pantallaDashboard(user, d);
@@ -784,7 +912,7 @@ function pantallaFormulario(user, datosExistentes = null) {
     const ayuda = document.getElementById('ayudaDniExtranjero');
     const label = document.getElementById('labelDni');
     if (ayuda) ayuda.classList.toggle('oculto', esDNI);
-    if (label) label.textContent = esDNI ? 'Número de DNI' : 'Número de documento';
+    if (label) label.textContent = esDNI ? t('labelNumeroDNI') : t('labelNumeroDocumento');
     // Al cambiar el tipo, reaplicar el filtro de caracteres sobre lo ya escrito
     const inputDni = document.getElementById('fDni');
     if (esDNI) {
@@ -838,26 +966,26 @@ function pantallaFormulario(user, datosExistentes = null) {
     const aviso = document.getElementById('avisoForm');
 
     if (!apellido || !nombre || !dni) {
-      aviso.innerHTML = '<div class="aviso error">Apellido, nombre y número de documento son obligatorios.</div>';
+      aviso.innerHTML = '<div class="aviso error">' + t('errCamposObligatorios') + '</div>';
       return;
     }
     if (tipoDocumento === 'DNI' && !validarDNI(dni)) {
-      aviso.innerHTML = '<div class="aviso error">El DNI debe tener 7 u 8 dígitos, sin puntos ni letras.</div>';
+      aviso.innerHTML = '<div class="aviso error">' + t('errDniInvalido') + '</div>';
       return;
     }
     if (tipoDocumento !== 'DNI' && dni.length < 4) {
-      aviso.innerHTML = '<div class="aviso error">Ingresá el número de documento completo (mínimo 4 caracteres).</div>';
+      aviso.innerHTML = '<div class="aviso error">' + t('errDocumentoCorto') + '</div>';
       return;
     }
     if (cuit && !validarCUIT(cuit)) {
-      aviso.innerHTML = '<div class="aviso error">El CUIT/CUIL no es válido. Revisá que esté completo y bien escrito (formato 20-12345678-9).</div>';
+      aviso.innerHTML = '<div class="aviso error">' + t('errCuitInvalido') + '</div>';
       return;
     }
     if (!aceptaPrivacidad) {
-      aviso.innerHTML = '<div class="aviso error">Debés aceptar la Política de Privacidad para continuar.</div>';
+      aviso.innerHTML = '<div class="aviso error">' + t('errPrivacidad') + '</div>';
       return;
     }
-    aviso.innerHTML = '<div class="aviso ok">Guardando...</div>';
+    aviso.innerHTML = '<div class="aviso ok">' + t('guardando') + '</div>';
     try {
       const datos = {
         apellido, nombre, dni, tipoDocumento, telefono, direccion, provincia, localidad, fechaNacimiento,
@@ -874,7 +1002,7 @@ function pantallaFormulario(user, datosExistentes = null) {
       await setDoc(doc(db, 'clientes', user.uid), datosAGuardar, { merge: true });
       pantallaDashboard(user, datos);
     } catch (err) {
-      aviso.innerHTML = '<div class="aviso error">Error al guardar: ' + err.message + '</div>';
+      aviso.innerHTML = '<div class="aviso error">' + t('errorGuardar') + err.message + '</div>';
     }
   };
 }
@@ -1793,7 +1921,8 @@ async function renderTabAgenda(user) {
 
     <div class="caja">
       <h3>Próximos eventos</h3>
-      <label>Buscar por cliente</label>
+      <button class="chica" id="btnExportarICS" style="width:auto;">📅 Exportar agenda (.ics)</button>
+      <label style="margin-top:12px;">Buscar por cliente</label>
       <input type="text" id="filtroEventoCliente" placeholder="Nombre del cliente...">
       <div style="display:flex;gap:8px;">
         <div style="flex:1;">
@@ -1841,6 +1970,7 @@ async function renderTabAgenda(user) {
   document.getElementById('filtroEventoCliente').addEventListener('input', () => cargarListaEventos());
   document.getElementById('filtroEventoDesde').addEventListener('change', () => cargarListaEventos());
   document.getElementById('filtroEventoHasta').addEventListener('change', () => cargarListaEventos());
+  document.getElementById('btnExportarICS').onclick = () => exportarAgendaICS();
 
   await cargarCalendario();
   await cargarListaEventos();
@@ -1851,6 +1981,69 @@ async function obtenerTodosLosEventos() {
   let eventos = [];
   snap.forEach(d => eventos.push({ id: d.id, ...d.data() }));
   return eventos;
+}
+
+// ---------- EXPORTAR AGENDA A .ICS (Google Calendar, calendario del celular, etc.) ----------
+function escaparTextoICS(texto) {
+  return String(texto || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\n/g, '\\n');
+}
+
+function fechaSiguienteICS(fechaStr) {
+  const [y, m, d] = fechaStr.split('-').map(Number);
+  const fecha = new Date(y, m - 1, d);
+  fecha.setDate(fecha.getDate() + 1);
+  const pad = (n) => String(n).padStart(2, '0');
+  return fecha.getFullYear() + pad(fecha.getMonth() + 1) + pad(fecha.getDate());
+}
+
+async function exportarAgendaICS() {
+  try {
+    const eventos = await obtenerTodosLosEventos();
+    if (eventos.length === 0) {
+      alert('No hay eventos en la agenda para exportar.');
+      return;
+    }
+    const pad = (n) => String(n).padStart(2, '0');
+    const ahora = new Date();
+    const dtstamp = ahora.getUTCFullYear() + pad(ahora.getUTCMonth() + 1) + pad(ahora.getUTCDate())
+      + 'T' + pad(ahora.getUTCHours()) + pad(ahora.getUTCMinutes()) + pad(ahora.getUTCSeconds()) + 'Z';
+
+    let ics = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Estudio Juridico Dr. Diego Mayorga//Portal//ES\r\nCALSCALE:GREGORIAN\r\n';
+    eventos.forEach(e => {
+      if (!e.fecha) return;
+      const fechaCompacta = e.fecha.replace(/-/g, '');
+      const descripcionPartes = [];
+      if (e.clienteNombre) descripcionPartes.push('Cliente: ' + e.clienteNombre);
+      if (e.nota) descripcionPartes.push(e.nota);
+      const resumen = e.titulo + (e.clienteNombre ? ' (' + e.clienteNombre + ')' : '');
+
+      ics += 'BEGIN:VEVENT\r\n';
+      ics += 'UID:' + e.id + '@portal-estudio-mayorga\r\n';
+      ics += 'DTSTAMP:' + dtstamp + '\r\n';
+      ics += 'DTSTART;VALUE=DATE:' + fechaCompacta + '\r\n';
+      ics += 'DTEND;VALUE=DATE:' + fechaSiguienteICS(e.fecha) + '\r\n';
+      ics += 'SUMMARY:' + escaparTextoICS(resumen) + '\r\n';
+      if (descripcionPartes.length) ics += 'DESCRIPTION:' + escaparTextoICS(descripcionPartes.join(' - ')) + '\r\n';
+      ics += 'END:VEVENT\r\n';
+    });
+    ics += 'END:VCALENDAR\r\n';
+
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'agenda-estudio-' + new Date().toISOString().slice(0, 10) + '.ics';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert('Error al exportar la agenda: ' + err.message);
+  }
 }
 
 async function cargarCalendario() {
