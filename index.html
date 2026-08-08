@@ -275,6 +275,40 @@ function esc(valor) {
   }[c]));
 }
 
+// ---------- VALIDACIÓN DE DNI Y CUIT/CUIL ----------
+function validarDNI(dni) {
+  const digitos = (dni || '').replace(/\D/g, '');
+  return /^\d{7,8}$/.test(digitos);
+}
+function validarCUIT(cuit) {
+  const digitos = (cuit || '').replace(/\D/g, '');
+  if (!/^\d{11}$/.test(digitos)) return false;
+  const multiplicadores = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+  let suma = 0;
+  for (let i = 0; i < 10; i++) suma += parseInt(digitos[i], 10) * multiplicadores[i];
+  let verificador = 11 - (suma % 11);
+  if (verificador === 11) verificador = 0;
+  if (verificador === 10) return false;
+  return verificador === parseInt(digitos[10], 10);
+}
+// ---------- VISTA PREVIA DE ARCHIVOS (imágenes y PDF) ----------
+function esImagenArchivo(nombre) {
+  return /\.(jpe?g|png|gif|webp)$/i.test(nombre || '');
+}
+function esPDFArchivo(nombre) {
+  return /\.pdf$/i.test(nombre || '');
+}
+function htmlPreviewArchivo(nombre, url) {
+  if (!nombre || !url) return '';
+  if (esImagenArchivo(nombre)) {
+    return `<a href="${url}" target="_blank"><img src="${url}" alt="${esc(nombre)}" style="max-width:100%;max-height:180px;border-radius:6px;display:block;margin-top:6px;border:1px solid #eee;"></a>`;
+  }
+  if (esPDFArchivo(nombre)) {
+    return `<a href="${url}" target="_blank" style="display:block;margin-top:6px;"><embed src="${url}" type="application/pdf" style="width:100%;height:160px;border:1px solid #eee;border-radius:6px;pointer-events:none;"></a>`;
+  }
+  return '';
+}
+
 // ---------- BLOQUEO CON HUELLA / FACE ID (WebAuthn, local al dispositivo) ----------
 function tieneCredencialGuardada() {
   return !!localStorage.getItem('bioCredId');
@@ -730,6 +764,10 @@ function pantallaFormulario(user, datosExistentes = null) {
     e.target.value = resultado;
   });
 
+  document.getElementById('fDni').addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 8);
+  });
+
   document.getElementById('btnGuardar').onclick = async () => {
     const apellido = document.getElementById('fApellido').value.trim();
     const nombre = document.getElementById('fNombre').value.trim();
@@ -757,6 +795,14 @@ function pantallaFormulario(user, datosExistentes = null) {
 
     if (!apellido || !nombre || !dni) {
       aviso.innerHTML = '<div class="aviso error">Apellido, nombre y DNI son obligatorios.</div>';
+      return;
+    }
+    if (!validarDNI(dni)) {
+      aviso.innerHTML = '<div class="aviso error">El DNI debe tener 7 u 8 dígitos, sin puntos ni letras.</div>';
+      return;
+    }
+    if (cuit && !validarCUIT(cuit)) {
+      aviso.innerHTML = '<div class="aviso error">El CUIT/CUIL no es válido. Revisá que esté completo y bien escrito (formato 20-12345678-9).</div>';
       return;
     }
     if (!aceptaPrivacidad) {
@@ -880,7 +926,7 @@ async function pantallaDashboard(user, datos) {
     }
   };
 
-  cargarHistorial(user.uid);
+  cargarHistorial(user.uid, datos.fechaVistaAdmin);
   cargarMensajesAbogado(user.uid);
   cargarPresupuestosCliente(user.uid);
   cargarAutorizacionesCliente(user.uid);
@@ -954,21 +1000,37 @@ async function cargarAutorizacionesCliente(uid) {
           <strong>${esc(a.titulo)}</strong><br>
           <span style="white-space:pre-wrap;">${esc(a.texto)}</span><br>
           ${a.autorizadoNombre ? '<small>Autorizado: ' + esc(a.autorizadoNombre) + (a.autorizadoDni ? ' - DNI ' + esc(a.autorizadoDni) : '') + '</small><br>' : ''}
-          <small>✅ Firmado el ${fechaFirma}</small>
+          <small>✅ Firmado el ${fechaFirma}${a.leidoCompleto ? ' (con confirmación de lectura completa del texto)' : ''}</small>
         </div>`;
       }
       return `<div class="lista-item">
         <strong>${esc(a.titulo)}</strong><br>
-        <span style="white-space:pre-wrap;">${esc(a.texto)}</span>
+        <div class="textoAutorizacion" data-id="${d.id}" style="white-space:pre-wrap;max-height:150px;overflow-y:auto;border:1px solid #eee;border-radius:6px;padding:8px;margin-top:6px;background:#fafafa;">${esc(a.texto)}</div>
+        <p style="font-size:11px;color:#b8860b;margin-top:4px;" class="avisoScroll" data-id="${d.id}">👆 Deslizá hasta el final del texto para poder firmar.</p>
         <div style="margin-top:8px;">
           <label>Nombre de la persona autorizada (si corresponde)</label>
           <input type="text" class="inputAutNombre" data-id="${d.id}">
           <label>DNI de la persona autorizada (si corresponde)</label>
           <input type="text" class="inputAutDni" data-id="${d.id}">
-          <button class="chica btnFirmarAutorizacion" data-id="${d.id}" style="width:auto;">Confirmar y firmar electrónicamente</button>
+          <button class="chica btnFirmarAutorizacion" data-id="${d.id}" style="width:auto;" disabled>Confirmar y firmar electrónicamente</button>
         </div>
       </div>`;
     }).join('');
+
+    cont.querySelectorAll('.textoAutorizacion').forEach(div => {
+      const habilitarSiCorresponde = () => {
+        const yaLlego = div.scrollHeight - div.scrollTop - div.clientHeight < 4;
+        if (yaLlego) {
+          const btn = cont.querySelector(`.btnFirmarAutorizacion[data-id="${div.dataset.id}"]`);
+          const aviso = cont.querySelector(`.avisoScroll[data-id="${div.dataset.id}"]`);
+          if (btn) btn.disabled = false;
+          if (aviso) aviso.style.display = 'none';
+        }
+      };
+      div.addEventListener('scroll', habilitarSiCorresponde);
+      // Si el texto ya entra completo sin necesidad de scroll, habilitar de una
+      habilitarSiCorresponde();
+    });
 
     cont.querySelectorAll('.btnFirmarAutorizacion').forEach(btn => {
       btn.onclick = async () => {
@@ -979,7 +1041,7 @@ async function cargarAutorizacionesCliente(uid) {
         if (!ok) return;
         try {
           await setDoc(doc(db, 'clientes', uid, 'autorizaciones', id), {
-            estado: 'firmado', autorizadoNombre, autorizadoDni, fechaFirma: serverTimestamp()
+            estado: 'firmado', autorizadoNombre, autorizadoDni, fechaFirma: serverTimestamp(), leidoCompleto: true
           }, { merge: true });
           cargarAutorizacionesCliente(uid);
         } catch (err) {
@@ -1005,7 +1067,7 @@ async function cargarMensajesAbogado(uid) {
     snap.forEach(d => {
       const m = d.data();
       const fecha = m.fecha ? new Date(m.fecha.seconds * 1000).toLocaleString('es-AR') : '';
-      html += `<div class="lista-item mensajeAbogado">💬 ${esc(m.texto || '')}${m.archivoUrl ? '<br>📎 <a href="' + m.archivoUrl + '" target="_blank">' + esc(m.archivoNombre) + '</a>' : ''}<small>${fecha}</small></div>`;
+      html += `<div class="lista-item mensajeAbogado">💬 ${esc(m.texto || '')}${m.archivoUrl ? '<br>📎 <a href="' + m.archivoUrl + '" target="_blank">' + esc(m.archivoNombre) + '</a>' + htmlPreviewArchivo(m.archivoNombre, m.archivoUrl) : ''}<small>${fecha}</small></div>`;
     });
     cont.innerHTML = html;
   } catch (err) {
@@ -1013,7 +1075,7 @@ async function cargarMensajesAbogado(uid) {
   }
 }
 
-async function cargarHistorial(uid) {
+async function cargarHistorial(uid, fechaVistaAdmin) {
   const cont = document.getElementById('listaHistorial');
   if (!cont) return;
   try {
@@ -1032,10 +1094,13 @@ async function cargarHistorial(uid) {
     }
     cont.innerHTML = items.map(it => {
       const fecha = it.fecha ? new Date(it.fecha.seconds * 1000).toLocaleString('es-AR') : '';
+      const visto = it.fecha && fechaVistaAdmin && it.fecha.seconds <= fechaVistaAdmin.seconds
+        ? '<span style="color:#1e7a34;font-size:11px;">✓ Leído por el estudio</span>'
+        : '<span style="color:#b8860b;font-size:11px;">Pendiente de lectura</span>';
       if (it.tipo === 'Archivo') {
-        return `<div class="lista-item">📎 <a href="${it.url}" target="_blank">${esc(it.nombre)}</a><small>${fecha}</small></div>`;
+        return `<div class="lista-item">📎 <a href="${it.url}" target="_blank">${esc(it.nombre)}</a>${htmlPreviewArchivo(it.nombre, it.url)}<small>${fecha} · ${visto}</small></div>`;
       }
-      return `<div class="lista-item">💬 ${esc(it.texto)}<small>${fecha}</small></div>`;
+      return `<div class="lista-item">💬 ${esc(it.texto)}<small>${fecha} · ${visto}</small></div>`;
     }).join('');
   } catch (err) {
     cont.innerHTML = '<p style="font-size:13px;color:#b32424;font-family:Arial;">Error al cargar: ' + err.message + '</p>';
@@ -1053,6 +1118,7 @@ async function pantallaAdmin(user, tabInicial = 'clientes') {
     <div id="estadisticasBox"></div>
     <div id="alertaHoyBox"></div>
     <div id="alertaProximosBox"></div>
+    <div id="alertaCumpleañosBox"></div>
     <div id="alertaMensajesBox"></div>
     <div class="tabs">
       <div class="tab" id="tabClientes">Clientes</div>
@@ -1076,6 +1142,7 @@ async function pantallaAdmin(user, tabInicial = 'clientes') {
   await mostrarEstadisticas();
   await revisarAlertasHoy();
   await revisarProximosVencimientos();
+  await revisarCumpleañosProximos();
   await revisarMensajesNuevos();
   mostrarTabAdmin(tabInicial, user);
 }
@@ -1255,7 +1322,7 @@ function dibujarListaClientes(filtro) {
         if (badge) badge.remove();
         const cLocal = cacheClientes.find(x => x.uid === el.dataset.uid);
         if (cLocal) cLocal.tieneNuevo = false;
-        setDoc(doc(db, 'clientes', el.dataset.uid), { tieneNuevo: false }, { merge: true }).catch(() => {});
+        setDoc(doc(db, 'clientes', el.dataset.uid), { tieneNuevo: false, fechaVistaAdmin: serverTimestamp() }, { merge: true }).catch(() => {});
         revisarMensajesNuevos();
       }
       if (yaAbierto) return;
@@ -1307,7 +1374,7 @@ async function renderDetalleCliente(uid, contenedor) {
           const coleccion = it.tipo === 'Archivo' ? 'archivos' : 'novedades';
           const botonBorrar = `<span class="btnBorrarItem" data-uid="${uid}" data-coleccion="${coleccion}" data-id="${it.id}" style="float:right;cursor:pointer;color:#b32424;">🗑️</span>`;
           if (it.tipo === 'Archivo') {
-            return `<div class="lista-item">📎 <a href="${it.url}" target="_blank">${esc(it.nombre)}</a>${botonBorrar}<small>${fecha}</small></div>`;
+            return `<div class="lista-item">📎 <a href="${it.url}" target="_blank">${esc(it.nombre)}</a>${htmlPreviewArchivo(it.nombre, it.url)}${botonBorrar}<small>${fecha}</small></div>`;
           }
           return `<div class="lista-item">💬 ${esc(it.texto)}${botonBorrar}<small>${fecha}</small></div>`;
         }).join('');
@@ -1316,7 +1383,7 @@ async function renderDetalleCliente(uid, contenedor) {
     msgSnap.forEach(d => {
       const m = d.data();
       const fecha = m.fecha ? new Date(m.fecha.seconds * 1000).toLocaleString('es-AR') : '';
-      htmlMsgs += `<div class="lista-item mensajeAbogado">💬 ${esc(m.texto || '')}${m.archivoUrl ? '<br>📎 <a href="' + m.archivoUrl + '" target="_blank">' + esc(m.archivoNombre) + '</a>' : ''}<small>${fecha}</small></div>`;
+      htmlMsgs += `<div class="lista-item mensajeAbogado">💬 ${esc(m.texto || '')}${m.archivoUrl ? '<br>📎 <a href="' + m.archivoUrl + '" target="_blank">' + esc(m.archivoNombre) + '</a>' + htmlPreviewArchivo(m.archivoNombre, m.archivoUrl) : ''}<small>${fecha}</small></div>`;
     });
 
     let htmlPresupuestos = '';
@@ -1671,6 +1738,18 @@ async function renderTabAgenda(user) {
 
     <div class="caja">
       <h3>Próximos eventos</h3>
+      <label>Buscar por cliente</label>
+      <input type="text" id="filtroEventoCliente" placeholder="Nombre del cliente...">
+      <div style="display:flex;gap:8px;">
+        <div style="flex:1;">
+          <label>Desde</label>
+          <input type="date" id="filtroEventoDesde">
+        </div>
+        <div style="flex:1;">
+          <label>Hasta</label>
+          <input type="date" id="filtroEventoHasta">
+        </div>
+      </div>
       <div id="listaEventos" style="margin-top:8px;">Cargando...</div>
     </div>
   `;
@@ -1703,6 +1782,10 @@ async function renderTabAgenda(user) {
 
   document.getElementById('mesAnterior').onclick = () => { mesActual.setMonth(mesActual.getMonth() - 1); cargarCalendario(); };
   document.getElementById('mesSiguiente').onclick = () => { mesActual.setMonth(mesActual.getMonth() + 1); cargarCalendario(); };
+
+  document.getElementById('filtroEventoCliente').addEventListener('input', () => cargarListaEventos());
+  document.getElementById('filtroEventoDesde').addEventListener('change', () => cargarListaEventos());
+  document.getElementById('filtroEventoHasta').addEventListener('change', () => cargarListaEventos());
 
   await cargarCalendario();
   await cargarListaEventos();
@@ -1757,10 +1840,21 @@ async function cargarListaEventos() {
   try {
     const eventos = await obtenerTodosLosEventos();
     const hoyStr = new Date().toISOString().slice(0, 10);
-    const futuros = eventos.filter(e => e.fecha >= hoyStr).sort((a, b) => a.fecha.localeCompare(b.fecha));
+    let futuros = eventos.filter(e => e.fecha >= hoyStr).sort((a, b) => a.fecha.localeCompare(b.fecha));
+
+    const inputCliente = document.getElementById('filtroEventoCliente');
+    const inputDesde = document.getElementById('filtroEventoDesde');
+    const inputHasta = document.getElementById('filtroEventoHasta');
+    const textoCliente = inputCliente ? inputCliente.value.trim().toLowerCase() : '';
+    const desde = inputDesde ? inputDesde.value : '';
+    const hasta = inputHasta ? inputHasta.value : '';
+
+    if (textoCliente) futuros = futuros.filter(e => (e.clienteNombre || '').toLowerCase().includes(textoCliente));
+    if (desde) futuros = futuros.filter(e => e.fecha >= desde);
+    if (hasta) futuros = futuros.filter(e => e.fecha <= hasta);
 
     if (futuros.length === 0) {
-      cont.innerHTML = '<p style="font-size:13px;color:#888;font-family:Arial;">No hay eventos próximos.</p>';
+      cont.innerHTML = '<p style="font-size:13px;color:#888;font-family:Arial;">No hay eventos que coincidan con la búsqueda.</p>';
       return;
     }
     cont.innerHTML = futuros.map(e => {
@@ -1829,6 +1923,43 @@ async function revisarProximosVencimientos() {
         return `${esc(e.titulo)} (en ${dias} día${dias > 1 ? 's' : ''})`;
       }).join(', ');
       box.innerHTML = `<div class="alertaHoy" style="background:#FFF4E0;color:#8a5a00;">⏳ Próximos vencimientos: ${items}</div>`;
+    } else {
+      box.innerHTML = '';
+    }
+  } catch (err) {
+    box.innerHTML = '';
+  }
+}
+
+async function revisarCumpleañosProximos() {
+  const box = document.getElementById('alertaCumpleañosBox');
+  if (!box) return;
+  try {
+    const snap = await getDocs(collection(db, 'clientes'));
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const proximos = [];
+
+    snap.forEach(d => {
+      const c = d.data();
+      if (!c.fechaNacimiento) return;
+      const [, mesStr, diaStr] = c.fechaNacimiento.split('-');
+      if (!mesStr || !diaStr) return;
+      const mes = parseInt(mesStr, 10) - 1;
+      const dia = parseInt(diaStr, 10);
+      let proximoCumple = new Date(hoy.getFullYear(), mes, dia);
+      if (proximoCumple < hoy) proximoCumple = new Date(hoy.getFullYear() + 1, mes, dia);
+      const dias = Math.round((proximoCumple - hoy) / 86400000);
+      if (dias <= 7) {
+        proximos.push({ nombre: nombreCompleto({ apellido: c.apellido, nombre: c.nombre }), dias });
+      }
+    });
+
+    proximos.sort((a, b) => a.dias - b.dias);
+
+    if (proximos.length > 0) {
+      const items = proximos.map(p => `${esc(p.nombre) || '(sin nombre)'} (${p.dias === 0 ? 'hoy' : 'en ' + p.dias + ' día' + (p.dias > 1 ? 's' : '')})`).join(', ');
+      box.innerHTML = `<div class="alertaHoy" style="background:#FBEFFB;color:#7a2e7a;">🎂 Cumpleaños próximos: ${items}</div>`;
     } else {
       box.innerHTML = '';
     }
