@@ -546,6 +546,19 @@ function pantallaLogin(modoRegistro = false) {
       aviso.innerHTML = '<div class="aviso error">' + traducirError(err.code) + '</div>';
     }
   };
+
+  // Permitir enviar el formulario apretando Enter en cualquiera de los campos
+  ['inEmailUsuario', 'inEmailDominioOtro', 'inPass'].forEach(id => {
+    const campo = document.getElementById(id);
+    if (campo) {
+      campo.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          document.getElementById('btnAccion').click();
+        }
+      });
+    }
+  });
 }
 
 function traducirError(code) {
