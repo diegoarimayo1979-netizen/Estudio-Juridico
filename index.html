@@ -1287,12 +1287,13 @@ async function renderDetalleCliente(uid, contenedor) {
         `</div>`
       : '';
 
-    const [novSnap, arcSnap, msgSnap, presSnap, autSnap] = await Promise.all([
+    const [novSnap, arcSnap, msgSnap, presSnap, autSnap, notasSnap] = await Promise.all([
       getDocs(query(collection(db, 'clientes', uid, 'novedades'), orderBy('fecha', 'desc'))),
       getDocs(query(collection(db, 'clientes', uid, 'archivos'), orderBy('fecha', 'desc'))),
       getDocs(query(collection(db, 'clientes', uid, 'mensajes'), orderBy('fecha', 'desc'))),
       getDocs(query(collection(db, 'clientes', uid, 'presupuestos'), orderBy('fecha', 'desc'))),
-      getDocs(query(collection(db, 'clientes', uid, 'autorizaciones'), orderBy('fecha', 'desc')))
+      getDocs(query(collection(db, 'clientes', uid, 'autorizaciones'), orderBy('fecha', 'desc'))),
+      getDocs(query(collection(db, 'clientes', uid, 'notasPrivadas'), orderBy('fecha', 'desc')))
     ]);
     let items = [];
     novSnap.forEach(d => items.push({ tipo: 'Nota', id: d.id, ...d.data() }));
@@ -1342,9 +1343,26 @@ async function renderDetalleCliente(uid, contenedor) {
       htmlAutorizaciones += `<div class="lista-item"><strong>${esc(a.titulo)}</strong>${botonBorrar}<small>${fecha} · ${estado}</small></div>`;
     });
 
+    let htmlNotasPrivadas = '';
+    notasSnap.forEach(d => {
+      const n = d.data();
+      const fecha = n.fecha ? new Date(n.fecha.seconds * 1000).toLocaleString('es-AR') : '';
+      const botonBorrar = `<span class="btnBorrarItem" data-uid="${uid}" data-coleccion="notasPrivadas" data-id="${d.id}" style="float:right;cursor:pointer;color:#b32424;">🗑️</span>`;
+      htmlNotasPrivadas += `<div class="lista-item" style="background:#FFF4E0;border-radius:6px;padding:8px;border-bottom:none;margin-bottom:6px;">📌 ${esc(n.texto)}${botonBorrar}<small>${fecha}</small></div>`;
+    });
+
     contenedor.innerHTML = `
       ${htmlDatos}
-      <h3 style="margin-bottom:6px;">Historial</h3>
+      <div class="caja" style="background:#FFFBF2;border-color:#F0DDA8;">
+        <h3 style="margin-bottom:6px;">📌 Notas privadas (solo vos las ves, el cliente no)</h3>
+        <div>${htmlNotasPrivadas || '<p style="font-size:13px;color:#888;font-family:Arial;">Todavía no dejaste notas privadas sobre este cliente.</p>'}</div>
+        <label style="margin-top:10px;">Agregar nota privada</label>
+        <textarea class="txtNotaPrivada" placeholder="Ej: Llamó a preguntar por el trámite, pidió reagendar la audiencia, etc."></textarea>
+        <button class="chica btnAgregarNota" data-uid="${uid}" style="width:auto;">Guardar nota privada</button>
+        <div class="avisoNota"></div>
+      </div>
+      <button class="chica btnExportarPDF" data-uid="${uid}" style="width:auto;">📄 Exportar ficha en PDF</button>
+      <h3 style="margin-bottom:6px;margin-top:16px;">Historial</h3>
       ${htmlItems}
       <h3 style="margin-top:14px;margin-bottom:6px;">Mensajes que le enviaste</h3>
       <div>${htmlMsgs || '<p style="font-size:13px;color:#888;font-family:Arial;">Todavía no le enviaste mensajes.</p>'}</div>
@@ -1388,15 +1406,17 @@ async function renderDetalleCliente(uid, contenedor) {
       aviso.innerHTML = '<div class="aviso ok">Eliminando...</div>';
       try {
         const u = btn.dataset.uid;
-        const [novSnap2, arcSnap2, msgSnap2] = await Promise.all([
+        const [novSnap2, arcSnap2, msgSnap2, notasSnap2] = await Promise.all([
           getDocs(collection(db, 'clientes', u, 'novedades')),
           getDocs(collection(db, 'clientes', u, 'archivos')),
-          getDocs(collection(db, 'clientes', u, 'mensajes'))
+          getDocs(collection(db, 'clientes', u, 'mensajes')),
+          getDocs(collection(db, 'clientes', u, 'notasPrivadas'))
         ]);
         const borrados = [];
         novSnap2.forEach(d => borrados.push(deleteDoc(doc(db, 'clientes', u, 'novedades', d.id))));
         arcSnap2.forEach(d => borrados.push(deleteDoc(doc(db, 'clientes', u, 'archivos', d.id))));
         msgSnap2.forEach(d => borrados.push(deleteDoc(doc(db, 'clientes', u, 'mensajes', d.id))));
+        notasSnap2.forEach(d => borrados.push(deleteDoc(doc(db, 'clientes', u, 'notasPrivadas', d.id))));
         await Promise.all(borrados);
         await deleteDoc(doc(db, 'clientes', u));
         cacheClientes = cacheClientes.filter(c => c.uid !== u);
@@ -1502,6 +1522,115 @@ async function renderDetalleCliente(uid, contenedor) {
       } catch (err) {
         aviso.innerHTML = '<div class="aviso error">Error: ' + err.message + '</div>';
       }
+    });
+
+    contenedor.querySelector('.btnAgregarNota').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const btn = e.target;
+      const texto = contenedor.querySelector('.txtNotaPrivada').value.trim();
+      const aviso = contenedor.querySelector('.avisoNota');
+      if (!texto) { aviso.innerHTML = '<div class="aviso error">Escribí una nota antes de guardar.</div>'; return; }
+      aviso.innerHTML = '<div class="aviso ok">Guardando...</div>';
+      try {
+        await addDoc(collection(db, 'clientes', btn.dataset.uid, 'notasPrivadas'), {
+          texto, fecha: serverTimestamp()
+        });
+        renderDetalleCliente(uid, contenedor);
+      } catch (err) {
+        aviso.innerHTML = '<div class="aviso error">Error: ' + err.message + '</div>';
+      }
+    });
+
+    contenedor.querySelector('.btnExportarPDF').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const nombreArchivo = nombreCompleto(c) || 'cliente';
+      const filasHtml = filasDatos.map(([label, valor]) => `<p><strong>${esc(label)}:</strong> ${esc(valor)}</p>`).join('');
+      const fechaHoy = new Date().toLocaleDateString('es-AR');
+
+      const historialHtml = items.length === 0
+        ? '<p class="vacio">Sin novedades registradas.</p>'
+        : items.map(it => {
+            const fecha = it.fecha ? new Date(it.fecha.seconds * 1000).toLocaleString('es-AR') : '';
+            return it.tipo === 'Archivo'
+              ? `<p>📎 ${esc(it.nombre)} <span class="fechaItem">(${fecha})</span></p>`
+              : `<p>💬 ${esc(it.texto)} <span class="fechaItem">(${fecha})</span></p>`;
+          }).join('');
+
+      let mensajesHtml = '';
+      msgSnap.forEach(d => {
+        const m = d.data();
+        const fecha = m.fecha ? new Date(m.fecha.seconds * 1000).toLocaleString('es-AR') : '';
+        mensajesHtml += `<p>💬 ${esc(m.texto || '')} <span class="fechaItem">(${fecha})</span></p>`;
+      });
+      if (!mensajesHtml) mensajesHtml = '<p class="vacio">Sin mensajes enviados.</p>';
+
+      let presupuestosHtml = '';
+      presSnap.forEach(d => {
+        const p = d.data();
+        const fecha = p.fecha ? new Date(p.fecha.seconds * 1000).toLocaleDateString('es-AR') : '';
+        const estados = { pendiente: 'Pendiente', aceptado: 'Aceptado', rechazado: 'Rechazado' };
+        presupuestosHtml += `<p>${esc(formatearMonto(p.monto))} — ${esc(p.descripcion)} <span class="fechaItem">(${fecha} · ${estados[p.estado] || p.estado}${p.pagado ? ' · Pagado' : ''})</span></p>`;
+      });
+      if (!presupuestosHtml) presupuestosHtml = '<p class="vacio">Sin presupuestos enviados.</p>';
+
+      let autorizacionesHtml = '';
+      autSnap.forEach(d => {
+        const a = d.data();
+        const fecha = a.fecha ? new Date(a.fecha.seconds * 1000).toLocaleDateString('es-AR') : '';
+        const estado = a.estado === 'firmado' ? 'Firmado' : 'Pendiente de firma';
+        autorizacionesHtml += `<p><strong>${esc(a.titulo)}</strong> <span class="fechaItem">(${fecha} · ${estado})</span></p>`;
+      });
+      if (!autorizacionesHtml) autorizacionesHtml = '<p class="vacio">Sin autorizaciones enviadas.</p>';
+
+      let notasHtml = '';
+      notasSnap.forEach(d => {
+        const n = d.data();
+        const fecha = n.fecha ? new Date(n.fecha.seconds * 1000).toLocaleString('es-AR') : '';
+        notasHtml += `<p>📌 ${esc(n.texto)} <span class="fechaItem">(${fecha})</span></p>`;
+      });
+      if (!notasHtml) notasHtml = '<p class="vacio">Sin notas privadas.</p>';
+
+      const htmlFicha = `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><title>Ficha - ${esc(nombreArchivo)}</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #222; padding: 30px; max-width: 800px; margin: 0 auto; }
+  h1 { font-size: 20px; color: #0F1E3D; border-bottom: 2px solid #0F1E3D; padding-bottom: 8px; }
+  h2 { font-size: 15px; color: #0F1E3D; margin-top: 22px; margin-bottom: 6px; }
+  p { margin: 4px 0; line-height: 1.4; }
+  .fechaItem { color: #888; font-size: 11px; }
+  .vacio { color: #888; font-style: italic; }
+  .encabezadoFicha { font-size: 12px; color: #666; margin-bottom: 20px; }
+  @media print { body { padding: 10px; } }
+</style></head>
+<body>
+  <h1>Estudio Jurídico - Ficha de Cliente</h1>
+  <p class="encabezadoFicha">Generado el ${fechaHoy}</p>
+  <h2>${esc(nombreCompleto(c)) || '(sin nombre)'}</h2>
+  <p><strong>DNI:</strong> ${esc(c.dni) || '-'} ${c.cuit ? '· <strong>CUIT/CUIL:</strong> ' + esc(c.cuit) : ''}</p>
+  <p><strong>Teléfono:</strong> ${esc(c.telefono) || '-'} · <strong>Email:</strong> ${esc(c.email) || '-'}</p>
+  ${c.localidad || c.provincia ? '<p><strong>Localidad:</strong> ' + esc([c.localidad, c.provincia].filter(Boolean).join(', ')) + '</p>' : ''}
+  ${filasHtml}
+  <h2>Historial</h2>
+  ${historialHtml}
+  <h2>Mensajes enviados al cliente</h2>
+  ${mensajesHtml}
+  <h2>Presupuestos / Honorarios</h2>
+  ${presupuestosHtml}
+  <h2>Autorizaciones</h2>
+  ${autorizacionesHtml}
+  <h2>Notas privadas del estudio</h2>
+  ${notasHtml}
+</body></html>`;
+
+      const ventana = window.open('', '_blank');
+      if (!ventana) {
+        alert('El navegador bloqueó la ventana de impresión. Habilitá las ventanas emergentes para este sitio e intentá de nuevo.');
+        return;
+      }
+      ventana.document.write(htmlFicha);
+      ventana.document.close();
+      ventana.focus();
+      setTimeout(() => ventana.print(), 300);
     });
   } catch (err) {
     contenedor.innerHTML = '<p style="font-size:13px;color:#b32424;font-family:Arial;">Error: ' + err.message + '</p>';
