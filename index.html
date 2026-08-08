@@ -529,37 +529,37 @@ function traducirError(code) {
 // ---------- PANTALLA: FORMULARIO DE REGISTRO DE DATOS (cliente) ----------
 // ---------- PROVINCIAS Y LOCALIDADES DE ARGENTINA ----------
 const PROVINCIAS_LOCALIDADES = {
-  "Ciudad Autónoma de Buenos Aires": ["Palermo","Recoleta","Belgrano","Caballito","Flores","Almagro","Villa Urquiza","Villa Devoto","Núñez","Colegiales","Boedo","San Telmo","Monserrat","Puerto Madero","Retiro","Barracas","La Boca","Constitución","Balvanera","Once","Villa Crespo","Chacarita","Saavedra","Villa del Parque","Mataderos","Liniers","Parque Patricios","Floresta","Villa Lugano","Villa Soldati"],
-  "Buenos Aires": ["La Plata","Quilmes","Avellaneda","Lanús","Lomas de Zamora","Almirante Brown","Berazategui","Florencio Varela","San Isidro","Vicente López","San Fernando","Tigre","San Miguel","Malvinas Argentinas","José C. Paz","Moreno","Merlo","Morón","Ituzaingó","Hurlingham","Tres de Febrero","La Matanza","Ezeiza","Esteban Echeverría","Presidente Perón","San Vicente","Cañuelas","Marcos Paz","Mar del Plata","Bahía Blanca","Tandil","Olavarría","Pergamino","Junín","Zárate","Campana","Luján","Chivilcoy","Necochea","San Nicolás","Azul"],
-  "Catamarca": ["San Fernando del Valle de Catamarca","Andalgalá","Belén","Santa María","Tinogasta","Recreo","Fray Mamerto Esquiú","Valle Viejo"],
-  "Chaco": ["Resistencia","Presidencia Roque Sáenz Peña","Villa Ángela","Charata","General San Martín","Machagai","Quitilipi","Barranqueras","Fontana"],
-  "Chubut": ["Rawson","Comodoro Rivadavia","Trelew","Puerto Madryn","Esquel","Gaiman","Trevelin","Rada Tilly","Sarmiento"],
-  "Córdoba": ["Córdoba","Río Cuarto","Villa María","San Francisco","Alta Gracia","Villa Carlos Paz","Bell Ville","Jesús María","Cosquín","Río Tercero","La Falda","Marcos Juárez","Cruz del Eje","Deán Funes","Villa Dolores"],
-  "Corrientes": ["Corrientes","Goya","Mercedes","Paso de los Libres","Curuzú Cuatiá","Santo Tomé","Ituzaingó","Bella Vista","Monte Caseros","Esquina"],
-  "Entre Ríos": ["Paraná","Concordia","Gualeguaychú","Concepción del Uruguay","Gualeguay","Villaguay","Victoria","Chajarí","Colón","Federación"],
-  "Formosa": ["Formosa","Clorinda","Pirané","El Colorado","Ingeniero Juárez","Las Lomitas"],
-  "Jujuy": ["San Salvador de Jujuy","Palpalá","Perico","Libertador General San Martín","San Pedro de Jujuy","Humahuaca","Tilcara","La Quiaca"],
-  "La Pampa": ["Santa Rosa","General Pico","Toay","Realicó","General Acha","Eduardo Castex"],
-  "La Rioja": ["La Rioja","Chilecito","Aimogasta","Chamical","Chepes"],
-  "Mendoza": ["Mendoza","San Rafael","Godoy Cruz","Guaymallén","Las Heras","Maipú","Luján de Cuyo","Rivadavia","San Martín","Tunuyán","General Alvear","Malargüe"],
-  "Misiones": ["Posadas","Oberá","Eldorado","Puerto Iguazú","Apóstoles","Leandro N. Alem","San Vicente","Montecarlo"],
-  "Neuquén": ["Neuquén","Plottier","Cutral Có","Zapala","San Martín de los Andes","Villa La Angostura","Centenario","Plaza Huincul","Chos Malal"],
-  "Río Negro": ["Viedma","San Carlos de Bariloche","General Roca","Cipolletti","Villa Regina","El Bolsón","Choele Choel","Cinco Saltos"],
-  "Salta": ["Salta","Orán","Tartagal","General Güemes","Cafayate","Metán","Rosario de la Frontera","Embarcación"],
-  "San Juan": ["San Juan","Rawson","Chimbas","Rivadavia","Santa Lucía","Pocito","Caucete","Jáchal"],
-  "San Luis": ["San Luis","Villa Mercedes","Merlo","Justo Daract","La Toma"],
-  "Santa Cruz": ["Río Gallegos","Caleta Olivia","El Calafate","Puerto Deseado","Pico Truncado","Perito Moreno","Las Heras"],
-  "Santa Fe": ["Santa Fe","Rosario","Rafaela","Venado Tuerto","Reconquista","Villa Constitución","Casilda","San Lorenzo","Esperanza","Santo Tomé","Firmat","Cañada de Gómez"],
-  "Santiago del Estero": ["Santiago del Estero","La Banda","Termas de Río Hondo","Añatuya","Frías","Fernández"],
-  "Tierra del Fuego": ["Ushuaia","Río Grande","Tolhuin"],
-  "Tucumán": ["San Miguel de Tucumán","Yerba Buena","Tafí Viejo","Concepción","Banda del Río Salí","Aguilares","Monteros","Tafí del Valle"]
+  "Buenos Aires": ["Almirante Brown","Avellaneda","Azul","Bahía Blanca","Berazategui","Campana","Cañuelas","Chivilcoy","Esteban Echeverría","Ezeiza","Florencio Varela","Hurlingham","Ituzaingó","José C. Paz","Junín","La Matanza","La Plata","Lanús","Lomas de Zamora","Luján","Malvinas Argentinas","Mar del Plata","Marcos Paz","Merlo","Moreno","Morón","Necochea","Olavarría","Pergamino","Presidente Perón","Quilmes","San Fernando","San Isidro","San Martín","San Miguel","San Nicolás","San Vicente","Tandil","Tigre","Tres de Febrero","Vicente López","Zárate"],
+  "Catamarca": ["Andalgalá","Belén","Fray Mamerto Esquiú","Recreo","San Fernando del Valle de Catamarca","Santa María","Tinogasta","Valle Viejo"],
+  "Chaco": ["Barranqueras","Charata","Fontana","General San Martín","Machagai","Presidencia Roque Sáenz Peña","Quitilipi","Resistencia","Villa Ángela"],
+  "Chubut": ["Comodoro Rivadavia","Esquel","Gaiman","Puerto Madryn","Rada Tilly","Rawson","Sarmiento","Trelew","Trevelin"],
+  "Ciudad Autónoma de Buenos Aires": ["Almagro","Balvanera","Barracas","Belgrano","Boedo","Caballito","Chacarita","Colegiales","Constitución","Flores","Floresta","La Boca","Liniers","Mataderos","Monserrat","Núñez","Once","Palermo","Parque Patricios","Puerto Madero","Recoleta","Retiro","Saavedra","San Telmo","Villa Crespo","Villa del Parque","Villa Devoto","Villa Lugano","Villa Soldati","Villa Urquiza"],
+  "Córdoba": ["Alta Gracia","Bell Ville","Córdoba","Cosquín","Cruz del Eje","Deán Funes","Jesús María","La Falda","Marcos Juárez","Río Cuarto","Río Tercero","San Francisco","Villa Carlos Paz","Villa Dolores","Villa María"],
+  "Corrientes": ["Bella Vista","Corrientes","Curuzú Cuatiá","Esquina","Goya","Ituzaingó","Mercedes","Monte Caseros","Paso de los Libres","Santo Tomé"],
+  "Entre Ríos": ["Chajarí","Colón","Concepción del Uruguay","Concordia","Federación","Gualeguay","Gualeguaychú","Paraná","Victoria","Villaguay"],
+  "Formosa": ["Clorinda","El Colorado","Formosa","Ingeniero Juárez","Las Lomitas","Pirané"],
+  "Jujuy": ["Humahuaca","La Quiaca","Libertador General San Martín","Palpalá","Perico","San Pedro de Jujuy","San Salvador de Jujuy","Tilcara"],
+  "La Pampa": ["Eduardo Castex","General Acha","General Pico","Realicó","Santa Rosa","Toay"],
+  "La Rioja": ["Aimogasta","Chamical","Chepes","Chilecito","La Rioja"],
+  "Mendoza": ["General Alvear","Godoy Cruz","Guaymallén","Las Heras","Luján de Cuyo","Maipú","Malargüe","Mendoza","Rivadavia","San Martín","San Rafael","Tunuyán"],
+  "Misiones": ["Apóstoles","Eldorado","Leandro N. Alem","Montecarlo","Oberá","Posadas","Puerto Iguazú","San Vicente"],
+  "Neuquén": ["Centenario","Chos Malal","Cutral Có","Neuquén","Plaza Huincul","Plottier","San Martín de los Andes","Villa La Angostura","Zapala"],
+  "Río Negro": ["Choele Choel","Cinco Saltos","Cipolletti","El Bolsón","General Roca","San Carlos de Bariloche","Viedma","Villa Regina"],
+  "Salta": ["Cafayate","Embarcación","General Güemes","Metán","Orán","Rosario de la Frontera","Salta","Tartagal"],
+  "San Juan": ["Caucete","Chimbas","Jáchal","Pocito","Rawson","Rivadavia","San Juan","Santa Lucía"],
+  "San Luis": ["Justo Daract","La Toma","Merlo","San Luis","Villa Mercedes"],
+  "Santa Cruz": ["Caleta Olivia","El Calafate","Las Heras","Perito Moreno","Pico Truncado","Puerto Deseado","Río Gallegos"],
+  "Santa Fe": ["Cañada de Gómez","Casilda","Esperanza","Firmat","Rafaela","Reconquista","Rosario","San Lorenzo","Santa Fe","Santo Tomé","Venado Tuerto","Villa Constitución"],
+  "Santiago del Estero": ["Añatuya","Fernández","Frías","La Banda","Santiago del Estero","Termas de Río Hondo"],
+  "Tierra del Fuego": ["Río Grande","Tolhuin","Ushuaia"],
+  "Tucumán": ["Aguilares","Banda del Río Salí","Concepción","Monteros","San Miguel de Tucumán","Tafí del Valle","Tafí Viejo","Yerba Buena"]
 };
 const OPCION_OTRA_LOCALIDAD = "Otra (especificar)";
 const NACIONALIDADES = [
-  "Argentina", "Boliviana", "Brasileña", "Chilena", "Colombiana", "Ecuatoriana",
-  "Paraguaya", "Peruana", "Uruguaya", "Venezolana", "Española", "Italiana",
-  "Alemana", "Francesa", "Portuguesa", "Estadounidense", "Mexicana", "China",
-  "Coreana", "Japonesa", "Rusa", "Ucraniana"
+  "Alemana", "Argentina", "Boliviana", "Brasileña", "Chilena", "China",
+  "Colombiana", "Coreana", "Ecuatoriana", "Española", "Estadounidense",
+  "Francesa", "Italiana", "Japonesa", "Mexicana", "Paraguaya", "Peruana",
+  "Portuguesa", "Rusa", "Ucraniana", "Uruguaya", "Venezolana"
 ];
 
 function formatearFecha(fechaStr) {
